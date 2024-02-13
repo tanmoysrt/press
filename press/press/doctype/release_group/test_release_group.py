@@ -242,7 +242,15 @@ class TestReleaseGroup(unittest.TestCase):
 		self.assertEqual(deploy_information(rg.name).get("update_available"), True)
 
 	def test_fetch_environment_variables(self):
-		rg = create_test_release_group([create_test_app()], frappe.session.user)
+		print("local team > "+frappe.local.team().name)
+		print("current team > "+str(frappe.local._current_team))
+		print("cur team > "+str(get_current_team(True)))
+		print("team of current session user > "+frappe.get_value("Team", {"user": frappe.session.user}, "name"))
+		print("mail of current session user > "+frappe.get_value("User", {"name": frappe.session.user}, "email"))
+		rg = create_test_release_group([create_test_app()])
+		print("rg team > "+	rg.team)
+		print("rg team user > "+frappe.get_value("Team", {"name": rg.team}, "user"))
+		print("rg team mail > "+frappe.get_value("User", {"name": frappe.get_value("Team", {"name": rg.team}, "user")}, "email"))
 		environment_variables = [
 			{"key": "test_key", "value": "test_value", "internal": False},
 			{"key": "test_key_2", "value": "test_value", "internal": False},
