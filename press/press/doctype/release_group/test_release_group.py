@@ -244,6 +244,7 @@ class TestReleaseGroup(unittest.TestCase):
 
 	def test_fetch_environment_variables(self):
 		print("local team > "+frappe.local.team().name)
+		print("local team user > "+frappe.local.team().user)
 		print("current team > "+str(frappe.local._current_team))
 		print("cur team > "+str(get_current_team(True)))
 		print("team of current session user > "+frappe.get_value("Team", {"user": frappe.session.user}, "name"))
