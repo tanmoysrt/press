@@ -57,6 +57,11 @@ jobs:
 
   tests:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        container: [1, 2]
+
     name: Server
 
     services:
@@ -130,7 +135,7 @@ jobs:
         working-directory: /home/runner/frappe-bench
         run: |
           bench --site test_site set-config allow_tests true
-          bench --site test_site run-tests --doctype "Release Group"
+          bench --site test_site run-parallel-tests --app press --with-coverage --total-builds 2 --build-number ${{ matrix.container }}
         env:
           TYPE: server
 

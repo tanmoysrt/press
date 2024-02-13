@@ -122,7 +122,6 @@ class TestPressPermissionGroup(FrappeTestCase):
 		site.db_insert()
 
 		frappe.set_user(self.team_member.name)
-		frappe.local.team = lambda: self.team
 		permissions = self.perm_group.get_all_document_permissions("Site")
 		self.assertEqual(len(permissions), 1)
 		self.assertEqual(permissions[0]["document_type"], "Site")
