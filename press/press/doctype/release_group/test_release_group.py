@@ -19,6 +19,7 @@ from press.press.doctype.release_group.release_group import (
 	new_release_group,
 )
 from press.press.doctype.team.test_team import create_test_team
+from press.utils import get_current_team
 
 
 def create_test_release_group(
