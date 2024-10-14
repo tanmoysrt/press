@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 import frappe
 from frappe.model.naming import make_autoname
 
-from press.press.doctype.database_server.test_database_server import (
+from press.database.doctype.database_server.test_database_server import (
 	create_test_database_server,
 )
 from press.press.doctype.press_settings.test_press_settings import (

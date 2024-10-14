@@ -37,7 +37,7 @@ class TestRootDomain(unittest.TestCase):
 		frappe.db.rollback()
 
 	def _create_fake_rename_job(self, site_name: str, creation=None):
-		from press.press.doctype.database_server.test_database_server import (
+		from press.database.doctype.database_server.test_database_server import (
 			create_test_database_server,
 		)
 		from press.press.doctype.proxy_server.test_proxy_server import (

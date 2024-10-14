@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from press.press.doctype.database_server.test_database_server import (
+from press.database.doctype.database_server.test_database_server import (
 	create_test_database_server,
 )
 from press.runner import Ansible
@@ -98,11 +98,11 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 			self.fail("Should be able to skip skippable variables")
 
 	@patch(
-		"press.press.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
+		"press.database.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
 		wraps=Ansible,
 	)
 	@patch(
-		"press.press.doctype.database_server.database_server.frappe.enqueue_doc",
+		"press.database.doctype.database_server.database_server.frappe.enqueue_doc",
 		new=foreground_enqueue_doc,
 	)
 	def test_skip_implies_persist_and_not_dynamic(self, Mock_Ansible):
@@ -136,11 +136,11 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 		self.assertEqual(server.mariadb_system_variables[0].value_str, default_value)
 
 	@patch(
-		"press.press.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
+		"press.database.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
 		wraps=Ansible,
 	)
 	@patch(
-		"press.press.doctype.database_server.database_server.frappe.enqueue_doc",
+		"press.database.doctype.database_server.database_server.frappe.enqueue_doc",
 		wraps=foreground_enqueue_doc,
 	)
 	def test_ansible_playbook_triggered_with_correct_input_on_update_of_child_table(
@@ -175,14 +175,14 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 		server.save()
 		server.status = "Broken"
 		with patch(
-			"press.press.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
+			"press.database.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
 			wraps=Ansible,
 		) as Mock_Ansible:
 			server.save()
 		Mock_Ansible.assert_not_called()
 
 	@patch(
-		"press.press.doctype.database_server.database_server.frappe.enqueue_doc",
+		"press.database.doctype.database_server.database_server.frappe.enqueue_doc",
 		new=foreground_enqueue_doc,
 	)
 	def test_playbook_run_on_update_of_child_table(self):
@@ -194,18 +194,18 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 		server.save()
 		server.mariadb_system_variables[0].value_int = 2000
 		with patch(
-			"press.press.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
+			"press.database.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
 			wraps=Ansible,
 		) as Mock_Ansible:
 			server.save()
 		Mock_Ansible.assert_called_once()
 
 	@patch(
-		"press.press.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
+		"press.database.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
 		wraps=Ansible,
 	)
 	@patch(
-		"press.press.doctype.database_server.database_server.frappe.enqueue_doc",
+		"press.database.doctype.database_server.database_server.frappe.enqueue_doc",
 		wraps=foreground_enqueue_doc,
 	)
 	def test_multiple_playbooks_triggered_for_multiple_variables(
@@ -224,11 +224,11 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 		self.assertEqual(2, Mock_Ansible.call_count)
 
 	@patch(
-		"press.press.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
+		"press.database.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
 		wraps=Ansible,
 	)
 	@patch(
-		"press.press.doctype.database_server.database_server.frappe.enqueue_doc",
+		"press.database.doctype.database_server.database_server.frappe.enqueue_doc",
 		new=foreground_enqueue_doc,
 	)
 	def test_persist_check_passes_option_to_playbook_run(self, Mock_Ansible):
@@ -246,7 +246,7 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 		self.assertTrue(kwargs["variables"]["persist"])
 
 	@patch(
-		"press.press.doctype.database_server.database_server.frappe.enqueue_doc",
+		"press.database.doctype.database_server.database_server.frappe.enqueue_doc",
 		new=foreground_enqueue_doc,
 	)
 	def test_playbook_run_on_addition_of_variable_and_only_that_variable(self):
@@ -257,7 +257,7 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 		)
 		server.save()
 		with patch(
-			"press.press.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
+			"press.database.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
 			wraps=Ansible,
 		) as Mock_Ansible:
 			server.append(
@@ -268,7 +268,7 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 		Mock_Ansible.assert_called_once()
 
 	@patch(
-		"press.press.doctype.database_server.database_server.frappe.enqueue_doc",
+		"press.database.doctype.database_server.database_server.frappe.enqueue_doc",
 		new=foreground_enqueue_doc,
 	)
 	def test_playbook_run_only_for_variable_changed(self):
@@ -283,7 +283,7 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 		)
 		server.save()
 		with patch(
-			"press.press.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
+			"press.database.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
 			wraps=Ansible,
 		) as Mock_Ansible:
 			server.mariadb_system_variables[0].value_int = 2000
@@ -291,7 +291,7 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 		Mock_Ansible.assert_called_once()
 
 	@patch(
-		"press.press.doctype.database_server.database_server.frappe.enqueue_doc",
+		"press.database.doctype.database_server.database_server.frappe.enqueue_doc",
 		new=foreground_enqueue_doc,
 	)
 	def test_playbooks_triggered_for_added_and_changed_variables_in_one_save(self):
@@ -302,7 +302,7 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 		)
 		server.save()
 		with patch(
-			"press.press.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
+			"press.database.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
 			wraps=Ansible,
 		) as Mock_Ansible:
 			server.append(
@@ -319,7 +319,7 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 			)
 
 	@patch(
-		"press.press.doctype.database_server.database_server.frappe.enqueue_doc",
+		"press.database.doctype.database_server.database_server.frappe.enqueue_doc",
 		wraps=foreground_enqueue_doc,
 	)
 	def test_background_jobs_not_created_for_new_server_doc(self, mock_enqueue_doc):
@@ -327,7 +327,7 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 		mock_enqueue_doc.assert_not_called()
 
 	@patch(
-		"press.press.doctype.database_server.database_server.frappe.enqueue_doc",
+		"press.database.doctype.database_server.database_server.frappe.enqueue_doc",
 		wraps=foreground_enqueue_doc,
 	)
 	def test_update_of_doc_with_member_that_is_not_a_field_works(self, mock_enqueue_doc):
@@ -340,14 +340,14 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 			self.fail("Update of doc without variables failed")
 
 	@patch(
-		"press.press.doctype.database_server.database_server.frappe.enqueue_doc",
+		"press.database.doctype.database_server.database_server.frappe.enqueue_doc",
 		new=foreground_enqueue_doc,
 	)
 	def test_add_variable_method_adds_and_updates_variables(self):
 		server = create_test_database_server()
 
 		with patch(
-			"press.press.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
+			"press.database.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
 			wraps=Ansible,
 		) as Mock_Ansible:
 			server.add_mariadb_variable("tmp_disk_table_size", "value_int", 10241)
@@ -362,7 +362,7 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 		self.assertEqual(10241, server.mariadb_system_variables[0].value_int)
 
 		with patch(
-			"press.press.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
+			"press.database.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
 			wraps=Ansible,
 		) as Mock_Ansible:
 			server.add_mariadb_variable("tmp_disk_table_size", "value_int", 10242)
@@ -376,14 +376,14 @@ class TestDatabaseServerMariaDBVariable(FrappeTestCase):
 		self.assertEqual(10242, server.mariadb_system_variables[0].value_int)
 
 		with patch(
-			"press.press.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
+			"press.database.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
 			wraps=Ansible,
 		) as Mock_Ansible:
 			server.add_mariadb_variable("tmp_disk_table_size", "value_int", 10242)  # no change
 		Mock_Ansible.assert_not_called()
 
 		with patch(
-			"press.press.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
+			"press.database.doctype.database_server_mariadb_variable.database_server_mariadb_variable.Ansible",
 			wraps=Ansible,
 		) as Mock_Ansible:
 			server.add_mariadb_variable(

@@ -83,7 +83,7 @@ if TYPE_CHECKING:
 	from datetime import datetime
 
 	from press.press.doctype.bench.bench import Bench
-	from press.press.doctype.database_server.database_server import DatabaseServer
+	from press.database.doctype.database_server.database_server import DatabaseServer
 	from press.press.doctype.deploy_candidate.deploy_candidate import DeployCandidate
 	from press.press.doctype.release_group.release_group import ReleaseGroup
 	from press.press.doctype.server.server import BaseServer, Server

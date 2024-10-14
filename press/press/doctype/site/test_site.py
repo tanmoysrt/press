@@ -17,7 +17,7 @@ from frappe.model.naming import make_autoname
 from press.exceptions import InsufficientSpaceOnServer
 from press.press.doctype.agent_job.agent_job import AgentJob
 from press.press.doctype.app.test_app import create_test_app
-from press.press.doctype.database_server.test_database_server import (
+from press.database.doctype.database_server.test_database_server import (
 	create_test_database_server,
 )
 from press.press.doctype.release_group.release_group import ReleaseGroup

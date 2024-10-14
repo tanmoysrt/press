@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 
-from press.press.doctype.database_server.database_server import DatabaseServer
+from press.database.doctype.database_server.database_server import DatabaseServer
 
 
 class MariaDBVariable(Document):

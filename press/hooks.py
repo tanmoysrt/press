@@ -119,7 +119,7 @@ permission_query_conditions = {
 	"Deploy": "press.press.doctype.deploy.deploy.get_permission_query_conditions",
 	"Bench": "press.press.doctype.bench.bench.get_permission_query_conditions",
 	"Server": "press.press.doctype.server.server.get_permission_query_conditions",
-	"Database Server": "press.press.doctype.database_server.database_server.get_permission_query_conditions",
+	"Database Server": "press.database.doctype.database_server.database_server.get_permission_query_conditions",
 	"Virtual Machine": "press.press.doctype.virtual_machine.virtual_machine.get_permission_query_conditions",
 	"Press Webhook": "press.press.doctype.press_webhook.press_webhook.get_permission_query_conditions",
 	"Press Webhook Log": "press.press.doctype.press_webhook_log.press_webhook_log.get_permission_query_conditions",

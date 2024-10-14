@@ -4,7 +4,7 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from press.press.doctype.database_server.test_database_server import (
+from press.database.doctype.database_server.test_database_server import (
 	create_test_database_server,
 )
 
