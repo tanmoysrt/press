@@ -2786,6 +2786,10 @@ class Site(Document, TagHelpers):
 	def suggest_database_indexes(self):
 		from press.press.report.mariadb_slow_queries.mariadb_slow_queries import get_data as get_slow_queries
 
+		existing_agent_job = frappe.db.exists(
+			"Agent Job", {"site": self.name, "job_type": "Analyze Slow Queries"}
+		)
+
 		# fetch slow queries of last 7 days
 		slow_queries = get_slow_queries(
 			frappe._dict(
