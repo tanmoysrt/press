@@ -1,0 +1,89 @@
+{
+ "app": "press",
+ "charts": [],
+ "content": "[{\"id\":\"bihGJR8P5M\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">All Sites</span>\",\"col\":12}},{\"id\":\"whX9aWZxMs\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Sites\",\"col\":3}},{\"id\":\"Drmj7VoNas\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Broken Sites\",\"col\":3}},{\"id\":\"NPkaFdqb2b\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pending Site\",\"col\":3}},{\"id\":\"O47_rvic2x\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Suspended Sites\",\"col\":3}},{\"id\":\"SQMd4REgB8\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Standby Sites</b></span>\",\"col\":12}},{\"id\":\"nMah6j2Y2b\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pending Sites\",\"col\":3}},{\"id\":\"QVV29t8W4w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Allocated\",\"col\":3}},{\"id\":\"A9SgurDLJG\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Unallocated\",\"col\":3}},{\"id\":\"t-XARRG5hX\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Broken Sites\",\"col\":3}}]",
+ "creation": "2025-04-29 13:10:20.512003",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "website",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Sites",
+ "link_type": "DocType",
+ "links": [],
+ "modified": "2025-04-29 15:56:10.863814",
+ "modified_by": "Administrator",
+ "module": "Press",
+ "name": "Sites",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 2.0,
+ "shortcuts": [
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Pending Sites",
+   "link_to": "Site",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Pending\",false],[\"Site\",\"is_standby\",\"=\",1,false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Active Sites",
+   "link_to": "Site",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Active\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Pending Site",
+   "link_to": "Site",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Pending\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Suspended Sites",
+   "link_to": "Site",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Suspended\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Active Allocated",
+   "link_to": "Site",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Active\",false],[\"Site\",\"standby_for_product\",\"is\",\"set\",false],[\"Site\",\"is_standby\",\"=\",0,false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Active Unallocated",
+   "link_to": "Site",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Active\",false],[\"Site\",\"is_standby\",\"=\",1,false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Red",
+   "doc_view": "List",
+   "label": "Broken Sites",
+   "link_to": "Site",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Broken\",false],[\"Site\",\"standby_for_product\",\"is\",\"set\",false]]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Sites",
+ "type": "Workspace"
+}

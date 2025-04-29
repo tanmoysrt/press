@@ -1,0 +1,49 @@
+{
+ "app": "press",
+ "charts": [],
+ "content": "[{\"id\":\"MUpIrxzkIG\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Benches</span>\",\"col\":12}},{\"id\":\"NDtSVGZYtk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Benches\",\"col\":3}},{\"id\":\"X8pyVFiolR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Broken Benches\",\"col\":3}}]",
+ "creation": "2025-04-29 13:18:15.033288",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "project-2",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Benches",
+ "link_type": "DocType",
+ "links": [],
+ "modified": "2025-04-29 16:06:09.814516",
+ "modified_by": "Administrator",
+ "module": "Press",
+ "name": "Benches",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 3.0,
+ "shortcuts": [
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Active Benches",
+   "link_to": "Bench",
+   "stats_filter": "[[\"Bench\",\"status\",\"=\",\"Active\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Red",
+   "doc_view": "List",
+   "label": "Broken Benches",
+   "link_to": "Bench",
+   "stats_filter": "[[\"Bench\",\"status\",\"=\",\"Broken\",false]]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Benches",
+ "type": "Workspace"
+}
