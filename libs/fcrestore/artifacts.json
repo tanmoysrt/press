@@ -1,0 +1,22 @@
+[
+  {
+    "name": "fcrestore-linux-amd64",
+    "url": "https://github.com/tanmoysrt/press/actions/runs/16024832982/artifacts/3449063996"
+  },
+  {
+    "name": "fcrestore-linux-arm64",
+    "url": "https://github.com/tanmoysrt/press/actions/runs/16024832982/artifacts/3449063700"
+  },
+  {
+    "name": "fcrestore-windows-amd64",
+    "url": "https://github.com/tanmoysrt/press/actions/runs/16024832982/artifacts/3449063037"
+  },
+  {
+    "name": "fcrestore-windows-arm64",
+    "url": "https://github.com/tanmoysrt/press/actions/runs/16024832982/artifacts/3449062968"
+  },
+  {
+    "name": "fcrestore-darwin-amd64",
+    "url": "https://github.com/tanmoysrt/press/actions/runs/16024832982/artifacts/3449062899"
+  }
+]
