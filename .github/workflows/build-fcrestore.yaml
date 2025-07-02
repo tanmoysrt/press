@@ -1,0 +1,124 @@
+name: Build FC Restore CLI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build:
+    name: Build for All Platforms
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [amd64, arm64]
+        exclude:
+          - goos: darwin
+            goarch: arm64
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # needed for branch & PR push
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Build binary
+        run: |
+          mkdir -p libs/fcrestore/dist
+          cd libs/fcrestore
+          OUTPUT=dist/fcrestore-${{ matrix.goos }}-${{ matrix.goarch }}
+          if [ "${{ matrix.goos }}" = "windows" ]; then OUTPUT="$OUTPUT.exe"; fi
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o $OUTPUT .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fcrestore-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: libs/fcrestore/dist/fcrestore-${{ matrix.goos }}-${{ matrix.goarch }}*
+
+  create-pr:
+    name: Create Pull Request for Metadata Update
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Create urls.json
+        run: |
+          mkdir -p libs/fcrestore
+          echo '{' > libs/fcrestore/urls.json
+          echo '  "windows": {' >> libs/fcrestore/urls.json
+          for arch in amd64 arm64; do
+            win_url="./artifacts/fcrestore-windows-$arch.exe"
+            if [ -f "$win_url" ]; then
+              echo "    \"$arch\": \"$win_url\"," >> libs/fcrestore/urls.json
+            fi
+          done
+          sed -i '$ s/,$//' libs/fcrestore/urls.json
+          echo '  },' >> libs/fcrestore/urls.json
+
+          echo '  "linux": {' >> libs/fcrestore/urls.json
+          for arch in amd64 arm64; do
+            linux_url="./artifacts/fcrestore-linux-$arch"
+            if [ -f "$linux_url" ]; then
+              echo "    \"$arch\": \"$linux_url\"," >> libs/fcrestore/urls.json
+            fi
+          done
+          sed -i '$ s/,$//' libs/fcrestore/urls.json
+          echo '  },' >> libs/fcrestore/urls.json
+
+          echo '  "darwin": {' >> libs/fcrestore/urls.json
+          for arch in amd64 arm64; do
+            darwin_url="./artifacts/fcrestore-darwin-$arch"
+            if [ -f "$darwin_url" ]; then
+              echo "    \"$arch\": \"$darwin_url\"," >> libs/fcrestore/urls.json
+            fi
+          done
+          sed -i '$ s/,$//' libs/fcrestore/urls.json
+          echo '  }' >> libs/fcrestore/urls.json
+          echo '}' >> libs/fcrestore/urls.json
+
+      - name: Commit and push urls.json to new branch
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          # Create random branch name with timestamp
+          BRANCH="update-fcrestore-urls-$(date +%s)"
+          echo "Creating branch $BRANCH"
+
+          git checkout -b $BRANCH
+
+          git add libs/fcrestore/urls.json
+          git commit -m "feat(fcrestore): Update Build url"
+          git push --set-upstream origin $BRANCH
+
+          echo "::set-output name=branch::$BRANCH"
+        id: create_branch
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message:" feat(fcrestore): Update Build url"
+          title: Update fcrestore build URLs
+          body: This PR updates `urls.json` with the latest build binaries URLs.
+          base: master
+          head: ${{ steps.create_branch.outputs.branch }}
