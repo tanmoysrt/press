@@ -1,0 +1,110 @@
+name: Build FC Restore CLI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build:
+    name: Build for All Platforms
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [amd64, arm64]
+        exclude:
+          - goos: darwin
+            goarch: arm64
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Build binary
+        run: |
+          mkdir -p libs/fcrestore/dist
+          cd libs/fcrestore
+          OUTPUT=dist/fcrestore-${{ matrix.goos }}-${{ matrix.goarch }}
+          if [ "${{ matrix.goos }}" = "windows" ]; then OUTPUT="$OUTPUT.exe"; fi
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o $OUTPUT .
+          cd ../..
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fcrestore-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: libs/fcrestore/dist/fcrestore-${{ matrix.goos }}-${{ matrix.goarch }}*
+          retention-days: 15
+          overwrite: true
+
+  create-pr:
+    name: Create Pull Request for Metadata Update
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get artifact download URLs for current run
+        id: get_artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          OWNER="${GITHUB_REPOSITORY%%/*}"
+          REPO="${GITHUB_REPOSITORY##*/}"
+          echo "Fetching artifacts for run $GITHUB_RUN_ID in $GITHUB_REPOSITORY"
+
+          ARTIFACTS_JSON=$(curl -sSL \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts")
+
+          echo "$ARTIFACTS_JSON" | \
+            jq -c --arg owner "$OWNER" --arg repo "$REPO" --argjson run_id "$GITHUB_RUN_ID" \
+            '.artifacts[] 
+             | select(.workflow_run.id == $run_id) 
+             | {name: .name, url: ("https://github.com/" + $owner + "/" + $repo + "/actions/runs/" + (.workflow_run.id|tostring) + "/artifacts/" + (.id|tostring)) }' | jq -s '.' > libs/fcrestore/artifacts.json
+
+          cat libs/fcrestore/artifacts.json
+      - name: Commit and push artifacts.json to new branch
+        id: create_branch
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          BRANCH="update-fcrestore-urls-$(date +%s)"
+          echo "Creating branch $BRANCH"
+
+          git checkout -b $BRANCH
+
+          git add libs/fcrestore/artifacts.json
+          git commit -m "feat(restore-cli): Update Site Restore CLI Artifact URLs"
+          git push --set-upstream origin $BRANCH
+
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --title "feat(restore-cli): Update Site Restore CLI Artifact URLs" \
+            --body "This PR updates \`artifacts.json\` of \`fcrestore\` CLI with the latest build binaries URLs." \
+            --head "${{ steps.create_branch.outputs.branch }}" \
+            --base master
