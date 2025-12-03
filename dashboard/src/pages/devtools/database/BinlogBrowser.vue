@@ -1,20 +1,17 @@
 <template>
-	<div
-		:class="{
-			'relative h-[100%]': this.$resources?.timeline?.loading,
-		}"
-	>
+	<div :class="{
+		'relative h-[100%]':
+			this.$resources?.timeline?.loading ||
+			binlog_indexer_running ||
+			!binlog_indexer_enabled,
+	}">
 		<Header class="sticky top-0 z-10 bg-white">
-			<div
-				class="flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-between"
-			>
+			<div class="flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-between">
 				<div class="flex flex-row items-center gap-2">
-					<Breadcrumbs
-						:items="[
-							{ label: 'Dev Tools', route: '/binlog-browser' },
-							{ label: 'Binlog Browser', route: '/binlog-browser' },
-						]"
-					/>
+					<Breadcrumbs :items="[
+						{ label: 'Dev Tools', route: '/binlog-browser' },
+						{ label: 'Binlog Browser', route: '/binlog-browser' },
+					]" />
 				</div>
 
 				<div class="flex flex-row gap-2">
@@ -23,58 +20,41 @@
 							<lucide-flask-conical class="h-4 w-4 text-purple-500" />
 						</div>
 					</Tooltip>
-					<LinkControl
-						class="cursor-pointer"
-						:options="{ doctype: 'Site', filters: { status: 'Active' } }"
-						placeholder="Select a site"
-						v-model="site"
-					/>
+					<LinkControl class="cursor-pointer" :options="{ doctype: 'Site', filters: { status: 'Active' } }"
+						placeholder="Select a site" v-model="site" />
 				</div>
 			</div>
 		</Header>
 		<div class="mx-5 my-2.5">
-			<div
-				v-if="!site"
-				class="flex h-full min-h-[80vh] w-full items-center justify-center gap-2 text-gray-700"
-			>
+			<div v-if="!site" class="flex h-full min-h-[80vh] w-full items-center justify-center gap-2 text-gray-700">
 				Select a site to get started
+			</div>
+			<div v-else-if="!binlog_index_state_loaded"
+				class="flex h-full min-h-[80vh] w-full items-center justify-center gap-2 text-gray-700">
+				<Spinner class="w-4" />
+				Loading Binlog Browser...
 			</div>
 			<div class="mt-2 flex flex-col" v-else>
 				<!-- Time and Query Selector -->
 				<div class="flex flex-row items-center justify-between gap-2">
 					<div class="flex flex-row items-center gap-2">
 						<div class="text-base">Query</div>
-						<FormControl
-							type="select"
-							:options="[
-								{ label: 'ALL     ', value: 'ALL' },
-								{ label: 'INSERT  ', value: 'INSERT' },
-								{ label: 'UPDATE  ', value: 'UPDATE' },
-								{ label: 'DELETE  ', value: 'DELETE' },
-								{ label: 'SELECT  ', value: 'SELECT' },
-								{ label: 'OTHER   ', value: 'OTHER' },
-							]"
-							size="sm"
-							variant="outline"
-							placeholder="Query Type"
-							v-model="type"
-						/>
+						<FormControl type="select" :options="[
+							{ label: 'ALL     ', value: 'ALL' },
+							{ label: 'INSERT  ', value: 'INSERT' },
+							{ label: 'UPDATE  ', value: 'UPDATE' },
+							{ label: 'DELETE  ', value: 'DELETE' },
+							{ label: 'SELECT  ', value: 'SELECT' },
+							{ label: 'OTHER   ', value: 'OTHER' },
+						]" size="sm" variant="outline" placeholder="Query Type" v-model="type" />
 					</div>
 					<div class="flex flex-row items-center gap-2">
 						<div class="max-w-[12rem] text-base" :autoClose="true">
-							<DatTimePicker
-								v-model="start"
-								variant="outline"
-								placeholder="Start Time"
-							/>
+							<DatTimePicker v-model="start" variant="outline" placeholder="Start Time" />
 						</div>
 						<FeatherIcon name="arrow-right" class="h-5 w-5 stroke-gray-700" />
 						<div class="max-w-[12rem] text-base" :autoClose="true">
-							<DatTimePicker
-								v-model="end"
-								variant="outline"
-								placeholder="End Time"
-							/>
+							<DatTimePicker v-model="end" variant="outline" placeholder="End Time" />
 						</div>
 					</div>
 				</div>
@@ -87,104 +67,57 @@
 					<div class="mt-3 flex flex-row items-center justify-between gap-2">
 						<div class="flex flex-row items-center gap-2">
 							<div class="text-base">Table</div>
-							<FormControl
-								type="select"
-								:options="
-									tables.map((table) => ({
-										label: table,
-										value: table,
-									}))
-								"
-								size="sm"
-								variant="outline"
-								placeholder="Selected Table"
-								v-model="selectedTable"
-							/>
-							<Button
-								variant="outline"
-								theme="gray"
-								size="sm"
+							<FormControl type="select" :options="tables.map((table) => ({
+								label: table,
+								value: table,
+							}))
+								" size="sm" variant="outline" placeholder="Selected Table" v-model="selectedTable" />
+							<Button variant="outline" theme="gray" size="sm"
 								@click="this.showTypeColumn = !this.showTypeColumn"
-								:iconLeft="this.showTypeColumn ? 'eye' : 'eye-off'"
-							>
+								:iconLeft="this.showTypeColumn ? 'eye' : 'eye-off'">
 								Query Type
 							</Button>
-							<Button
-								variant="outline"
-								theme="gray"
-								size="sm"
+							<Button variant="outline" theme="gray" size="sm"
 								@click="this.showTableColumn = !this.showTableColumn"
-								:iconLeft="this.showTableColumn ? 'eye' : 'eye-off'"
-							>
+								:iconLeft="this.showTableColumn ? 'eye' : 'eye-off'">
 								Table Name
 							</Button>
 						</div>
 
 						<div class="flex flex-row items-center gap-2">
-							<FormControl
-								type="text"
-								size="sm"
-								variant="outline"
-								placeholder="Search keywords"
-								v-model="searchString"
-								:disabled="
-									this.$resources?.searchBinlogs?.loading ||
+							<FormControl type="text" size="sm" variant="outline"
+								placeholder="Search keywords (Optional)" v-model="searchString" :disabled="this.$resources?.searchBinlogs?.loading ||
 									this.$resources?.fetchQueriesFromBinlog?.loading
-								"
-							/>
-							<Button
-								variant="solid"
-								theme="gray"
-								size="sm"
-								@click="searchBinlogs"
-								:loading="
-									this.$resources?.searchBinlogs?.loading ||
-									this.$resources?.fetchQueriesFromBinlog?.loading
-								"
-								loadingText="Searching"
-								iconLeft="search"
-							>
+									" />
+							<Button variant="solid" theme="gray" size="sm" @click="searchBinlogs" :loading="this.$resources?.searchBinlogs?.loading ||
+								this.$resources?.fetchQueriesFromBinlog?.loading
+								" loadingText="Searching" iconLeft="search">
 								Search
 							</Button>
 						</div>
 					</div>
 					<!-- Result Table -->
 					<div class="mt-3">
-						<div
-							v-if="!this.searchResultReady"
-							class="flex h-80 w-full items-center justify-center gap-2 text-base text-gray-700"
-						>
+						<div v-if="!this.searchResultReady"
+							class="flex h-80 w-full items-center justify-center gap-2 text-base text-gray-700">
 							Search for binlogs to see results
 						</div>
-						<div
-							v-else-if="this.$resources?.searchBinlogs?.loading"
-							class="flex h-80 w-full items-center justify-center gap-2 text-base text-gray-700"
-						>
+						<div v-else-if="this.$resources?.searchBinlogs?.loading"
+							class="flex h-80 w-full items-center justify-center gap-2 text-base text-gray-700">
 							<Spinner class="w-4" /> Searching for binlogs...
 						</div>
-						<BinlogResultTable
-							v-else
-							:loadingData="this.$resources?.fetchQueriesFromBinlog?.loading"
-							:loadData="this.fetchQueries"
-							:columns="this.tableColumns"
-							:data="this.tableRows"
-							:isTruncateText="true"
-							:truncateLength="120"
-							:noOfRows="queryIds.length"
-							:fullViewFormatters="fullViewFormatters"
-							:cellFormatters="cellFormatters"
-							:alignColumns="{
+						<BinlogResultTable v-else :loadingData="this.$resources?.fetchQueriesFromBinlog?.loading"
+							:loadData="this.fetchQueries" :columns="this.tableColumns" :data="this.tableRows"
+							:isTruncateText="true" :truncateLength="120" :noOfRows="queryIds.length"
+							:fullViewFormatters="fullViewFormatters" :cellFormatters="cellFormatters" :alignColumns="{
 								'Event Size': 'center',
 								Timestamp: 'center',
-							}"
-						/>
+							}" />
 					</div>
 
 					<!-- Block  -->
-					<div
-						class="z-1000 bg-white-overlay-900 absolute inset-0 flex justify-center items-center"
-						v-if="!isBinlogSearchAccessible"
-					>
+					<div class="z-1000 bg-white-overlay-900 absolute inset-0 flex justify-center items-center"
+						v-if="!isBinlogSearchAccessible">
 						<div class="flex text-md text-gray-800 items-center gap-1.5">
 							<lucide-triangle-alert class="h-5 w-5 text-amber-600" />
 							To view or search SQL queries, choose a time range of less than 6
@@ -196,13 +129,62 @@
 		</div>
 
 		<!-- Overlay to hide controls while building timeline -->
-		<div
-			class="z-1000 bg-white-overlay-800 absolute inset-0 flex justify-center items-center"
-			v-if="this.$resources?.timeline?.loading"
-		>
+		<div class="z-1000 bg-white-overlay-800 absolute inset-0 flex justify-center items-center"
+			v-if="binlog_index_state_loaded && this.$resources?.timeline?.loading">
 			<div class="flex gap-2 text-base text-gray-800">
 				<Spinner class="w-4" />
 				Building timeline...
+			</div>
+		</div>
+
+		<div class="z-2000 bg-white absolute inset-0 flex justify-center items-center"
+			v-if="binlog_index_state_loaded && binlog_indexer_running">
+			<div class="flex flex-col items-center gap-3 text-center px-6 max-w-lg">
+				<lucide-construction class="h-8 w-8 text-gray-800 mb-1" />
+				<h2 class="text-xl font-semibold text-gray-900">
+					Binlog Browser Temporarily Unavailable
+				</h2>
+				<p class="text-gray-600">
+					We are indexing new binlogs. This can take up to
+					<strong>5 minutes</strong>.
+					<br />
+					You can wait or come back later.
+				</p>
+			</div>
+		</div>
+
+		<div class="z-3000 bg-white absolute inset-0 flex justify-center items-center"
+			v-if="binlog_index_state_loaded && !binlog_indexer_enabled">
+			<div class="flex flex-col items-center gap-3 text-center px-6 max-w-lg">
+				<lucide-construction class="h-8 w-8 text-gray-800 mb-1" />
+				<h2 class="text-xl font-semibold text-gray-900" v-if="
+					site_hosted_on_shared_server || database_server_memory < 8 * 1024
+				">
+					Binlog Browser Not Available
+				</h2>
+				<h2 class="text-xl font-semibold text-gray-900" v-else>
+					Binlog Indexing Disabled
+				</h2>
+				<p class="text-gray-600" v-if="site_hosted_on_shared_server">
+					Binlog Browser is only available for sites on dedicated servers.
+					<br />
+					This site is currently on shared hosting.
+				</p>
+				<p class="text-gray-600" v-else-if="database_server_memory < 8 * 1024">
+					<span>This feature requires at least <strong>8 GB RAM</strong> on the db
+						server.</span>
+					<br />
+					Currently, the server has only
+					<strong>{{ Math.round(database_server_memory / 1024) }} GB RAM</strong>.
+				</p>
+				<p class="text-gray-600" v-else>
+					Follow the
+					<a href="https://docs.press.dev/user-guide/devtools/binlog-browser" class="text-blue-600 underline"
+						target="_blank" rel="noopener noreferrer">
+						documentation
+					</a>
+					to enable Binlog Indexing.
+				</p>
 			</div>
 		</div>
 	</div>
@@ -246,9 +228,11 @@ export default {
 			showTableColumn: false,
 			dateRangeValue: null,
 			lastPushedState: null, // Track last pushed URL state
+			binlog_index_state_loaded: false,
 			binlog_indexer_enabled: false,
 			binlog_indexer_running: false,
 			site_hosted_on_shared_server: false,
+			database_server_memory: 0,
 			binlog_status_check_interval_ref: null,
 		};
 	},
@@ -271,6 +255,12 @@ export default {
 			// reset state
 			this.data = null;
 			this.errorMessage = null;
+			this.binlog_index_state_loaded = false;
+			this.binlog_indexer_enabled = false;
+			this.binlog_indexer_running = false;
+			this.site_hosted_on_shared_server = false;
+			this.database_server_memory = 0;
+
 			this.$resources.site.submit();
 			this.fetchBinlogServiceStatus();
 		},
@@ -333,10 +323,12 @@ export default {
 				},
 				onSuccess: (data) => {
 					if (data?.message) {
+						this.binlog_index_state_loaded = true;
 						this.binlog_indexer_enabled = data.message?.enabled;
 						this.binlog_indexer_running = data.message?.indexer_running;
 						this.site_hosted_on_shared_server =
 							data.message?.hosted_on_shared_server;
+						this.database_server_memory = data.message?.database_server_memory;
 					}
 				},
 			};

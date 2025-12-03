@@ -3586,10 +3586,16 @@ class Site(Document, TagHelpers):
 
 	@dashboard_whitelist()
 	def binlog_indexing_service_status(self):
+		hosted_on_shared_server = bool(
+			frappe.db.get_value("Database Server", self.database_server_name, "public", cache=True)
+		)
 		return {
 			"enabled": self.is_binlog_indexing_enabled(),
 			"indexer_running": self.is_binlog_indexer_running(),
-			"hosted_on_shared_server": bool(frappe.db.get_value("Server", self.server, "public", cache=True)),
+			"hosted_on_shared_server": hosted_on_shared_server,
+			"database_server_memory": 0
+			if hosted_on_shared_server
+			else frappe.db.get_value("Database Server", self.database_server_name, "ram", cache=True),
 		}
 
 	@dashboard_whitelist()
