@@ -3573,7 +3573,7 @@ class Site(Document, TagHelpers):
 		return self.database_name
 
 	@dashboard_whitelist()
-	def fetch_binlog_timeline(self, start: int, end: int, query_type: str | None = None):  # noqa: C901
+	def fetch_binlog_timeline(self, start: int, end: int, query_type: str | None = None):
 		data = self.database_server_agent.get_binlogs_timeline(
 			start=start,
 			end=end,
@@ -3584,51 +3584,53 @@ class Site(Document, TagHelpers):
 		start_timestamp = data.get("start_timestamp")
 		end_timestamp = data.get("end_timestamp")
 		interval = data.get("interval")
-		series = []
+		dataset = {}
+		time_series = []
+		blank_data = {
+			"INSERT": 0,
+			"UPDATE": 0,
+			"DELETE": 0,
+			"SELECT": 0,
+			"OTHER": 0,
+		}
 		current_timestamp = start_timestamp
 		while current_timestamp < end_timestamp:
-			series.append(current_timestamp)
+			dataset[current_timestamp] = blank_data.copy()
+			time_series.append(current_timestamp)
 			current_timestamp += interval
 
 		if current_timestamp == end_timestamp:
-			series.append(current_timestamp)
-		elif len(series) > 0 and series[-1] != end_timestamp:
-			series.append(end_timestamp)
+			time_series.append(end_timestamp)
+			dataset[current_timestamp] = blank_data.copy()
+		elif len(time_series) > 0 and time_series[-1] != end_timestamp:
+			dataset[end_timestamp] = blank_data.copy()
 
-		dataset_map = {
-			"INSERT": [0],
-			"UPDATE": [0],
-			"DELETE": [0],
-			"SELECT": [0],
-			"OTHER": [0],
-		}
-
-		if len(series) > 1:
-			for i in range(len(series) - 1):
-				start_timestamp = series[i]
-				end_timestamp = series[i + 1]
+		# TODO optimize this loop
+		if len(time_series) > 1:
+			for i in range(len(time_series) - 1):
+				start_timestamp = time_series[i]
+				end_timestamp = time_series[i + 1]
 				key = f"{start_timestamp}:{end_timestamp}"
 				if key not in data["results"]:
 					continue
 
 				query_data: dict = data["results"][key]
-				for q in dataset_map:
-					dataset_map[q].append(query_data.get(q, 0))
+				dataset[start_timestamp]["INSERT"] = query_data.get("INSERT", 0)
+				dataset[start_timestamp]["UPDATE"] = query_data.get("UPDATE", 0)
+				dataset[start_timestamp]["DELETE"] = query_data.get("DELETE", 0)
+				dataset[start_timestamp]["SELECT"] = query_data.get("SELECT", 0)
+				dataset[start_timestamp]["OTHER"] = query_data.get("OTHER", 0)
 
-		datasets = []
-		for key, value in dataset_map.items():
-			datasets.append(
-				{
-					"stack": "path",
-					"path": key,
-					"values": value,
-				}
-			)
+		# Convert dataset to list of dicts
+		converted_dataset = []
+		for timestamp in sorted(dataset.keys()):
+			entry = {"timestamp": timestamp}
+			entry.update(dataset[timestamp])
+			converted_dataset.append(entry)
 
 		return {
-			"datasets": datasets,
-			"labels": series,
-			"tables": data.get("tables", []),
+			"dataset": converted_dataset,
+			"tables": sorted(data.get("tables", [])),
 		}
 
 	@dashboard_whitelist()
