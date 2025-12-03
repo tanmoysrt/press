@@ -1,14 +1,20 @@
 <template>
-	<div :class="{
-		'relative h-[100%]': this.$resources?.timeline?.loading,
-	}">
+	<div
+		:class="{
+			'relative h-[100%]': this.$resources?.timeline?.loading,
+		}"
+	>
 		<Header class="sticky top-0 z-10 bg-white">
-			<div class="flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-between">
+			<div
+				class="flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-between"
+			>
 				<div class="flex flex-row items-center gap-2">
-					<Breadcrumbs :items="[
-						{ label: 'Dev Tools', route: '/binlog-browser' },
-						{ label: 'Binlog Browser', route: '/binlog-browser' },
-					]" />
+					<Breadcrumbs
+						:items="[
+							{ label: 'Dev Tools', route: '/binlog-browser' },
+							{ label: 'Binlog Browser', route: '/binlog-browser' },
+						]"
+					/>
 				</div>
 
 				<div class="flex flex-row gap-2">
@@ -17,13 +23,20 @@
 							<lucide-flask-conical class="h-4 w-4 text-purple-500" />
 						</div>
 					</Tooltip>
-					<LinkControl class="cursor-pointer" :options="{ doctype: 'Site', filters: { status: 'Active' } }"
-						placeholder="Select a site" v-model="site" />
+					<LinkControl
+						class="cursor-pointer"
+						:options="{ doctype: 'Site', filters: { status: 'Active' } }"
+						placeholder="Select a site"
+						v-model="site"
+					/>
 				</div>
 			</div>
 		</Header>
 		<div class="mx-5 my-2.5">
-			<div v-if="!site" class="flex h-full min-h-[80vh] w-full items-center justify-center gap-2 text-gray-700">
+			<div
+				v-if="!site"
+				class="flex h-full min-h-[80vh] w-full items-center justify-center gap-2 text-gray-700"
+			>
 				Select a site to get started
 			</div>
 			<div class="mt-2 flex flex-col" v-else>
@@ -31,22 +44,37 @@
 				<div class="flex flex-row items-center justify-between gap-2">
 					<div class="flex flex-row items-center gap-2">
 						<div class="text-base">Query</div>
-						<FormControl type="select" :options="[
-							{ label: 'ALL     ', value: 'ALL' },
-							{ label: 'INSERT  ', value: 'INSERT' },
-							{ label: 'UPDATE  ', value: 'UPDATE' },
-							{ label: 'DELETE  ', value: 'DELETE' },
-							{ label: 'SELECT  ', value: 'SELECT' },
-							{ label: 'OTHER   ', value: 'OTHER' },
-						]" size="sm" variant="outline" placeholder="Query Type" v-model="type" />
+						<FormControl
+							type="select"
+							:options="[
+								{ label: 'ALL     ', value: 'ALL' },
+								{ label: 'INSERT  ', value: 'INSERT' },
+								{ label: 'UPDATE  ', value: 'UPDATE' },
+								{ label: 'DELETE  ', value: 'DELETE' },
+								{ label: 'SELECT  ', value: 'SELECT' },
+								{ label: 'OTHER   ', value: 'OTHER' },
+							]"
+							size="sm"
+							variant="outline"
+							placeholder="Query Type"
+							v-model="type"
+						/>
 					</div>
 					<div class="flex flex-row items-center gap-2">
-						<div class="max-w-[11rem] text-base" :autoClose="true">
-							<DatTimePicker v-model="start" variant="outline" placeholder="Start Time" />
+						<div class="max-w-[12rem] text-base" :autoClose="true">
+							<DatTimePicker
+								v-model="start"
+								variant="outline"
+								placeholder="Start Time"
+							/>
 						</div>
 						<FeatherIcon name="arrow-right" class="h-5 w-5 stroke-gray-700" />
-						<div class="max-w-[11rem] text-base" :autoClose="true">
-							<DatTimePicker v-model="end" variant="outline" placeholder="End Time" />
+						<div class="max-w-[12rem] text-base" :autoClose="true">
+							<DatTimePicker
+								v-model="end"
+								variant="outline"
+								placeholder="End Time"
+							/>
 						</div>
 					</div>
 				</div>
@@ -59,57 +87,104 @@
 					<div class="mt-3 flex flex-row items-center justify-between gap-2">
 						<div class="flex flex-row items-center gap-2">
 							<div class="text-base">Table</div>
-							<FormControl type="select" :options="tables.map((table) => ({
-								label: table,
-								value: table,
-							}))
-								" size="sm" variant="outline" placeholder="Selected Table" v-model="selectedTable" />
-							<Button variant="outline" theme="gray" size="sm"
+							<FormControl
+								type="select"
+								:options="
+									tables.map((table) => ({
+										label: table,
+										value: table,
+									}))
+								"
+								size="sm"
+								variant="outline"
+								placeholder="Selected Table"
+								v-model="selectedTable"
+							/>
+							<Button
+								variant="outline"
+								theme="gray"
+								size="sm"
 								@click="this.showTypeColumn = !this.showTypeColumn"
-								:iconLeft="this.showTypeColumn ? 'eye' : 'eye-off'">
+								:iconLeft="this.showTypeColumn ? 'eye' : 'eye-off'"
+							>
 								Query Type
 							</Button>
-							<Button variant="outline" theme="gray" size="sm"
+							<Button
+								variant="outline"
+								theme="gray"
+								size="sm"
 								@click="this.showTableColumn = !this.showTableColumn"
-								:iconLeft="this.showTableColumn ? 'eye' : 'eye-off'">
+								:iconLeft="this.showTableColumn ? 'eye' : 'eye-off'"
+							>
 								Table Name
 							</Button>
 						</div>
 
 						<div class="flex flex-row items-center gap-2">
-							<FormControl type="text" size="sm" variant="outline" placeholder="Search keywords"
-								v-model="searchString" :disabled="this.$resources?.searchBinlogs?.loading ||
+							<FormControl
+								type="text"
+								size="sm"
+								variant="outline"
+								placeholder="Search keywords"
+								v-model="searchString"
+								:disabled="
+									this.$resources?.searchBinlogs?.loading ||
 									this.$resources?.fetchQueriesFromBinlog?.loading
-									" />
-							<Button variant="solid" theme="gray" size="sm" @click="searchBinlogs" :loading="this.$resources?.searchBinlogs?.loading ||
-								this.$resources?.fetchQueriesFromBinlog?.loading
-								" loadingText="Searching" iconLeft="search">
+								"
+							/>
+							<Button
+								variant="solid"
+								theme="gray"
+								size="sm"
+								@click="searchBinlogs"
+								:loading="
+									this.$resources?.searchBinlogs?.loading ||
+									this.$resources?.fetchQueriesFromBinlog?.loading
+								"
+								loadingText="Searching"
+								iconLeft="search"
+							>
 								Search
 							</Button>
 						</div>
 					</div>
 					<!-- Result Table -->
 					<div class="mt-3">
-						<div v-if="!this.searchResultReady"
-							class="flex h-80 w-full items-center justify-center gap-2 text-base text-gray-700">
+						<div
+							v-if="!this.searchResultReady"
+							class="flex h-80 w-full items-center justify-center gap-2 text-base text-gray-700"
+						>
 							Search for binlogs to see results
 						</div>
-						<div v-else-if="this.$resources?.searchBinlogs?.loading"
-							class="flex h-80 w-full items-center justify-center gap-2 text-base text-gray-700">
+						<div
+							v-else-if="this.$resources?.searchBinlogs?.loading"
+							class="flex h-80 w-full items-center justify-center gap-2 text-base text-gray-700"
+						>
 							<Spinner class="w-4" /> Searching for binlogs...
 						</div>
-						<BinlogResultTable v-else :loadingData="this.$resources?.fetchQueriesFromBinlog?.loading"
-							:loadData="this.fetchQueries" :columns="this.tableColumns" :data="this.tableRows"
-							:isTruncateText="true" :truncateLength="120" :noOfRows="queryIds.length"
-							:fullViewFormatters="fullViewFormatters" :cellFormatters="cellFormatters" :alignColumns="{
+						<BinlogResultTable
+							v-else
+							:loadingData="this.$resources?.fetchQueriesFromBinlog?.loading"
+							:loadData="this.fetchQueries"
+							:columns="this.tableColumns"
+							:data="this.tableRows"
+							:isTruncateText="true"
+							:truncateLength="120"
+							:noOfRows="queryIds.length"
+							:fullViewFormatters="fullViewFormatters"
+							:cellFormatters="cellFormatters"
+							:alignColumns="{
 								'Event Size': 'center',
 								Timestamp: 'center',
-							}" />
+							}"
+						/>
 					</div>
 
 					<!-- Block  -->
-					<div class="z-1000 bg-white-overlay-900 absolute inset-0 flex justify-center items-center"
-						v-if="!isBinlogSearchAccessible">
+					<div
+						class="z-1000 bg-white-overlay-900 absolute inset-0 flex justify-center items-center"
+						v-if="!isBinlogSearchAccessible"
+					>
 						<div class="flex text-md text-gray-800 items-center gap-1.5">
 							<lucide-triangle-alert class="h-5 w-5 text-amber-600" />
 							To view or search SQL queries, choose a time range of less than 6
@@ -121,8 +196,10 @@
 		</div>
 
 		<!-- Overlay to hide controls while building timeline -->
-		<div class="z-1000 bg-white-overlay-800 absolute inset-0 flex justify-center items-center"
-			v-if="this.$resources?.timeline?.loading">
+		<div
+			class="z-1000 bg-white-overlay-800 absolute inset-0 flex justify-center items-center"
+			v-if="this.$resources?.timeline?.loading"
+		>
 			<div class="flex gap-2 text-base text-gray-800">
 				<Spinner class="w-4" />
 				Building timeline...
@@ -169,7 +246,10 @@ export default {
 			showTableColumn: false,
 			dateRangeValue: null,
 			lastPushedState: null, // Track last pushed URL state
-			searchSQLQueriesOnce: true,
+			binlog_indexer_enabled: false,
+			binlog_indexer_running: false,
+			site_hosted_on_shared_server: false,
+			binlog_status_check_interval_ref: null,
 		};
 	},
 	mounted() {
@@ -192,7 +272,7 @@ export default {
 			this.data = null;
 			this.errorMessage = null;
 			this.$resources.site.submit();
-			this.fetchBinlogTimeline();
+			this.fetchBinlogServiceStatus();
 		},
 		type() {
 			this.fetchBinlogTimeline();
@@ -205,6 +285,10 @@ export default {
 			this.updateURLParams();
 			this.fetchBinlogTimeline();
 		},
+		isBinlogIndexerAvailable(newVal) {
+			if (!newVal) return;
+			this.fetchBinlogTimeline();
+		},
 	},
 	resources: {
 		site() {
@@ -215,6 +299,11 @@ export default {
 					return { doctype: 'Site', name: this.site };
 				},
 				auto: false,
+				onSuccess: (data) => {
+					if (data?.message) {
+						this.fetchBinlogServiceStatus();
+					}
+				},
 			};
 		},
 		timeline() {
@@ -225,6 +314,29 @@ export default {
 				onSuccess: (data) => {
 					if (data?.message) {
 						this.resetSearch();
+					}
+				},
+			};
+		},
+		binlogIndexingServiceStatus() {
+			return {
+				url: 'press.api.client.run_doc_method',
+				initialData: {},
+				auto: false,
+				makeParams: () => {
+					return {
+						dt: 'Site',
+						dn: this.site,
+						method: 'binlog_indexing_service_status',
+						args: {},
+					};
+				},
+				onSuccess: (data) => {
+					if (data?.message) {
+						this.binlog_indexer_enabled = data.message?.enabled;
+						this.binlog_indexer_running = data.message?.indexer_running;
+						this.site_hosted_on_shared_server =
+							data.message?.hosted_on_shared_server;
 					}
 				},
 			};
@@ -350,6 +462,9 @@ export default {
 		fetchBinlogTimeline() {
 			if (!this.start || !this.end || !this.site) return;
 			if (this.$resources.timeline?.loading ?? true) return;
+			if (!this.binlog_indexer_enabled) return;
+			if (this.binlog_indexer_running) return;
+
 			this.$resources.timeline.submit({
 				dt: 'Site',
 				dn: this.site,
@@ -362,6 +477,9 @@ export default {
 			});
 		},
 		searchBinlogs() {
+			if (this.$resources.searchBinlogs?.loading ?? true) return;
+			if (!this.binlog_indexer_enabled) return;
+			if (this.binlog_indexer_running) return;
 			this.$resources.searchBinlogs.submit({
 				dt: 'Site',
 				dn: this.site,
@@ -377,6 +495,10 @@ export default {
 			});
 		},
 		fetchQueries(start, end) {
+			if (this.$resources.fetchQueriesFromBinlog?.loading ?? true) return;
+			if (!this.binlog_indexer_enabled) return;
+			if (this.binlog_indexer_running) return;
+
 			let lastQueryIndex = this.result.length;
 			if (lastQueryIndex >= this.queryIds.length) {
 				return;
@@ -405,6 +527,18 @@ export default {
 				});
 			}
 		},
+		fetchBinlogServiceStatus() {
+			if (this.binlog_status_check_interval_ref) {
+				clearInterval(this.binlog_status_check_interval_ref);
+			}
+			if (!this.site) return;
+			if (this.$resources?.binlogIndexingServiceStatus?.loading ?? true) return;
+
+			this.$resources.binlogIndexingServiceStatus.submit();
+			this.binlog_status_check_interval_ref = setInterval(() => {
+				this.$resources.binlogIndexingServiceStatus.submit();
+			}, 5000);
+		},
 		onZoomEvent(start, end) {
 			if (!start || !end) {
 				return;
@@ -428,7 +562,9 @@ export default {
 			if (this.$resources.site?.loading ?? true) return false;
 			return true;
 		},
-
+		isBinlogIndexerAvailable() {
+			return this.binlog_indexer_enabled && !this.binlog_indexer_running;
+		},
 		timeline() {
 			return this.$resources?.timeline?.data?.message ?? {};
 		},
