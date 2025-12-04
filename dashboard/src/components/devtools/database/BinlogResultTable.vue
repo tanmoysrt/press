@@ -193,15 +193,16 @@ watch(
 		<div class="relative flex flex-1 flex-col overflow-auto text-base">
 			<div
 				v-if="loadingData"
-				class="absolute bottom-0 left-0 right-0 top-0 flex w-full items-center justify-center gap-2 bg-white-overlay-900 text-base text-gray-800"
+				class="absolute bottom-0 left-0 right-0 top-0 flex w-full items-center justify-center gap-2 bg-white text-base text-gray-800 h-80"
 			>
 				<Spinner class="w-4" /> Crunching data...
 			</div>
 			<div
 				v-if="props.data?.length == 0"
-				class="flex min-h-[20vh] items-center justify-center"
+				class="flex flex-col h-80 items-center justify-center text-gray-800 text-base gap-1"
 			>
-				<div>No results to display</div>
+				<p>No results to display</p><br></br>
+				<p>Try adjusting your search criteria or filters</p>
 			</div>
 			<table
 				v-else

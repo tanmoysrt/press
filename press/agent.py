@@ -8,7 +8,7 @@ import os
 import re
 from contextlib import suppress
 from datetime import date
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import frappe
 import frappe.utils
@@ -1469,7 +1469,14 @@ Response: {reason or getattr(result, "text", "Unknown")}
 		)
 
 	def get_binlogs_timeline(
-		self, start: int, end: int, database: str, table: str | None = None, type: str | None = None
+		self,
+		start: int,
+		end: int,
+		database: str,
+		table: str | None = None,
+		type: str | None = None,
+		event_size_comparator: Literal["gt", "lt"] | None = None,
+		event_size: int | None = None,
 	):
 		return self.post(
 			"/database/binlogs/indexer/timeline",
@@ -1479,6 +1486,8 @@ Response: {reason or getattr(result, "text", "Unknown")}
 				"database": database,
 				"table": table,
 				"type": type,
+				"event_size_comparator": event_size_comparator,
+				"event_size": event_size,
 			},
 		)
 
@@ -1490,6 +1499,8 @@ Response: {reason or getattr(result, "text", "Unknown")}
 		type: str | None = None,
 		table: str | None = None,
 		search_str: str | None = None,
+		event_size_comparator: Literal["gt", "lt"] | None = None,
+		event_size: int | None = None,
 	):
 		return self.post(
 			"/database/binlogs/indexer/search",
@@ -1500,6 +1511,8 @@ Response: {reason or getattr(result, "text", "Unknown")}
 				"type": type,
 				"table": table,
 				"search_str": search_str,
+				"event_size_comparator": event_size_comparator,
+				"event_size": event_size,
 			},
 		)
 

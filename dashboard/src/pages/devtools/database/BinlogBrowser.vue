@@ -1,23 +1,17 @@
 <template>
-	<div
-		:class="{
-			'relative h-[100%]':
-				this.$resources?.timeline?.loading ||
-				binlog_indexer_running ||
-				!binlog_indexer_enabled,
-		}"
-	>
+	<div :class="{
+		'relative h-[100%]':
+			this.$resources?.timeline?.loading ||
+			binlog_indexer_running ||
+			!binlog_indexer_enabled,
+	}">
 		<Header class="sticky top-0 z-10 bg-white">
-			<div
-				class="flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-between"
-			>
+			<div class="flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-between">
 				<div class="flex flex-row items-center gap-2">
-					<Breadcrumbs
-						:items="[
-							{ label: 'Dev Tools', route: '/binlog-browser' },
-							{ label: 'Binlog Browser', route: '/binlog-browser' },
-						]"
-					/>
+					<Breadcrumbs :items="[
+						{ label: 'Dev Tools', route: '/binlog-browser' },
+						{ label: 'Binlog Browser', route: '/binlog-browser' },
+					]" />
 				</div>
 
 				<div class="flex flex-row gap-2">
@@ -26,26 +20,17 @@
 							<lucide-flask-conical class="h-4 w-4 text-purple-500" />
 						</div>
 					</Tooltip>
-					<LinkControl
-						class="cursor-pointer"
-						:options="{ doctype: 'Site', filters: { status: 'Active' } }"
-						placeholder="Select a site"
-						v-model="site"
-					/>
+					<LinkControl class="cursor-pointer" :options="{ doctype: 'Site', filters: { status: 'Active' } }"
+						placeholder="Select a site" v-model="site" />
 				</div>
 			</div>
 		</Header>
 		<div class="mx-5 my-2.5">
-			<div
-				v-if="!site"
-				class="flex h-full min-h-[80vh] w-full items-center justify-center gap-2 text-gray-700"
-			>
+			<div v-if="!site" class="flex h-full min-h-[80vh] w-full items-center justify-center gap-2 text-gray-700">
 				Select a site to get started
 			</div>
-			<div
-				v-else-if="!binlog_index_state_loaded"
-				class="flex h-full min-h-[80vh] w-full items-center justify-center gap-2 text-gray-700"
-			>
+			<div v-else-if="!binlog_index_state_loaded"
+				class="flex h-full min-h-[80vh] w-full items-center justify-center gap-2 text-gray-700">
 				<Spinner class="w-4" />
 				Loading Binlog Browser...
 			</div>
@@ -53,56 +38,54 @@
 				<!-- Time and Query Selector -->
 				<div class="flex flex-row items-center justify-between gap-2">
 					<div class="flex flex-row items-center gap-2">
-						<FormControl
-							class="w-[8rem]"
-							type="select"
-							:options="[
-								{ label: 'All Query', value: 'ALL' },
-								{ label: 'Insert Query', value: 'INSERT' },
-								{ label: 'Update Query', value: 'UPDATE' },
-								{ label: 'Delete Query', value: 'DELETE' },
-								{ label: 'Select Query', value: 'SELECT' },
-								{ label: 'Other Query', value: 'OTHER' },
-							]"
-							size="sm"
-							variant="outline"
-							placeholder="Query Type"
-							v-model="type"
-							:disabled="this.$resources?.timeline?.loading"
-						/>
-						<FormControl
-							type="text"
-							size="sm"
-							variant="outline"
-							placeholder="Table Name (% allowed)"
-							v-model="tableName"
-							:disabled="this.$resources?.timeline?.loading"
-						/>
+						<FormControl class="w-[13rem]" type="select" :options="[
+							{ label: 'All Query', value: 'ALL' },
+							{ label: 'Insert Query', value: 'INSERT' },
+							{ label: 'Update Query', value: 'UPDATE' },
+							{ label: 'Delete Query', value: 'DELETE' },
+							{ label: 'Select Query', value: 'SELECT' },
+							{ label: 'Other Query', value: 'OTHER' },
+						]" size="sm" variant="outline" placeholder="Query Type" v-model="type"
+							:disabled="this.$resources?.timeline?.loading" />
+
+						<FormControl type="text" class="w-[18rem]" size="sm" variant="outline"
+							placeholder="Table Name (% allowed)" v-model="tableName"
+							:disabled="this.$resources?.timeline?.loading" />
+
+						<div class="w-full flex flex-row items-center gap-2">
+							<div class="text-base">Event Size</div>
+							<FormControl class="w-[8rem]" type="select" :options="[
+								{
+									label: '',
+									value: '',
+								},
+								{
+									label: 'less than',
+									value: 'lt',
+								},
+								{
+									label: 'greater than',
+									value: 'gt',
+								},
+							]" size="sm" variant="outline" :disabled="isProcessingQueries" v-model="event_size_comparator"
+								placeholder="Comparator" />
+							<FormControl v-if="event_size_comparator" type="number" size="sm" variant="outline"
+								placeholder="size" class="w-[8rem]" v-model="event_size"
+								:disabled="isProcessingQueries" />
+							<div v-if="event_size_comparator" class="text-base">bytes</div>
+						</div>
 					</div>
 					<div class="flex flex-row items-center gap-2">
-						<div class="max-w-[12rem] text-base" :autoClose="false">
-							<DatTimePicker
-								v-model="start"
-								variant="outline"
-								placeholder="Start Time"
-								:disabled="this.$resources?.timeline?.loading"
-								:disableTextInput="true"
-								:clearable="false"
-								:maxDateTime="end"
-							/>
+						<div class="w-[12rem] text-base" :autoClose="false">
+							<DateTimePicker v-model="start" variant="outline" placeholder="Start Time"
+								:disabled="this.$resources?.timeline?.loading" :disableTextInput="true"
+								:clearable="false" :maxDateTime="end" />
 						</div>
 						<FeatherIcon name="arrow-right" class="h-5 w-5 stroke-gray-700" />
-						<div class="max-w-[12rem] text-base" :autoClose="true">
-							<DatTimePicker
-								v-model="end"
-								variant="outline"
-								placeholder="End Time"
-								:disabled="this.$resources?.timeline?.loading"
-								:disableTextInput="true"
-								:clearable="false"
-								:minDateTime="start"
-								:maxDateTime="Date()"
-							/>
+						<div class="w-[12rem] text-base" :autoClose="true">
+							<DateTimePicker v-model="end" variant="outline" placeholder="End Time"
+								:disabled="this.$resources?.timeline?.loading" :disableTextInput="true"
+								:clearable="false" :minDateTime="start" :maxDateTime="Date()" />
 						</div>
 					</div>
 				</div>
@@ -112,110 +95,40 @@
 				</div>
 				<div class="relative">
 					<!-- Query Option -->
-					<div class="mt-3 flex flex-row items-center justify-between gap-2">
-						<div class="flex flex-row items-center gap-2 w-full">
-							<TextInput
-								type="text"
-								size="sm"
-								variant="outline"
-								placeholder="Search Keyword"
-								class="w-[12rem]"
-								v-model="searchString"
-								:disabled="isProcessingQueries"
-								@keydown.enter.prevent="searchBinlogs"
-							/>
-							<div class="text-gray-400">|</div>
-							<div class="w-full flex flex-row items-center gap-2">
-								<div class="text-base">Event Size</div>
-								<FormControl
-									class="w-[8rem]"
-									type="select"
-									:options="[
-										{
-											label: '',
-											value: '',
-										},
-										{
-											label: 'less than',
-											value: '<=',
-										},
-										{
-											label: 'greater than',
-											value: '>=',
-										},
-									]"
-									size="sm"
-									variant="outline"
-									:disabled="isProcessingQueries"
-									v-model="event_size_comparator"
-								/>
-								<FormControl
-									v-if="event_size_comparator"
-									type="number"
-									size="sm"
-									variant="outline"
-									placeholder="size"
-									class="w-[8rem]"
-									:disabled="isProcessingQueries"
-								/>
-								<div v-if="event_size_comparator" class="text-base">bytes</div>
-							</div>
-						</div>
+					<div class="mt-3 flex flex-row items-center justify-end gap-2">
+						<TextInput type="text" size="sm" variant="outline" placeholder="Search Phrase (Optional)"
+							class="w-[12rem]" v-model="searchString" :disabled="isProcessingQueries"
+							@keydown.enter.prevent="searchBinlogs" />
 
-						<div class="flex flex-row items-center gap-2">
-							<Button
-								variant="solid"
-								theme="gray"
-								size="sm"
-								@click="searchBinlogs"
-								:loading="
-									this.$resources?.searchBinlogs?.loading ||
-									this.$resources?.fetchQueriesFromBinlog?.loading
-								"
-								loadingText="Searching"
-								iconLeft="search"
-							>
-								Search Binlogs
-							</Button>
-						</div>
+
+						<Button variant="solid" theme="gray" size="sm" @click="searchBinlogs" :loading="this.$resources?.searchBinlogs?.loading ||
+							this.$resources?.fetchQueriesFromBinlog?.loading
+							" loadingText="Searching" iconLeft="search">
+							Search
+						</Button>
 					</div>
 					<!-- Result Table -->
 					<div class="mt-3">
-						<div
-							v-if="!this.searchResultReady"
-							class="flex h-80 w-full items-center justify-center gap-2 text-base text-gray-700"
-						>
+						<div v-if="!this.searchResultReady"
+							class="flex h-80 w-full items-center justify-center gap-2 text-base text-gray-700">
 							Search for binlogs to see results
 						</div>
-						<div
-							v-else-if="this.$resources?.searchBinlogs?.loading"
-							class="flex h-80 w-full items-center justify-center gap-2 text-base text-gray-700"
-						>
+						<div v-else-if="this.$resources?.searchBinlogs?.loading"
+							class="flex h-80 w-full items-center justify-center gap-2 text-base text-gray-700">
 							<Spinner class="w-4" /> Searching for binlogs...
 						</div>
-						<BinlogResultTable
-							v-else
-							:loadingData="this.$resources?.fetchQueriesFromBinlog?.loading"
-							:loadData="this.fetchQueries"
-							:columns="this.tableColumns"
-							:data="this.tableRows"
-							:isTruncateText="true"
-							:truncateLength="120"
-							:noOfRows="queryIds.length"
-							:fullViewFormatters="fullViewFormatters"
-							:cellFormatters="cellFormatters"
-							:alignColumns="{
+						<BinlogResultTable v-else :loadingData="this.$resources?.fetchQueriesFromBinlog?.loading"
+							:loadData="this.fetchQueries" :columns="this.tableColumns" :data="this.tableRows"
+							:isTruncateText="true" :truncateLength="120" :noOfRows="queryIds.length"
+							:fullViewFormatters="fullViewFormatters" :cellFormatters="cellFormatters" :alignColumns="{
 								'Event Size': 'center',
 								Timestamp: 'center',
-							}"
-						/>
+							}" />
 					</div>
 
 					<!-- Block  -->
-					<div
-						class="z-1000 bg-white-overlay-900 absolute inset-0 flex justify-center items-center"
-						v-if="!isBinlogSearchAccessible"
-					>
+					<div class="z-1000 bg-white-overlay-900 absolute inset-0 flex justify-center items-center"
+						v-if="!isBinlogSearchAccessible">
 						<div class="flex text-md text-gray-800 items-center gap-1.5">
 							<lucide-triangle-alert class="h-5 w-5 text-amber-600" />
 							To view or search SQL queries, choose a time range of less than 6
@@ -227,20 +140,16 @@
 		</div>
 
 		<!-- Overlay to hide controls while building timeline -->
-		<div
-			class="z-1000 bg-white-overlay-800 absolute inset-0 flex justify-center items-center"
-			v-if="binlog_index_state_loaded && this.$resources?.timeline?.loading"
-		>
+		<div class="z-1000 bg-white-overlay-800 absolute inset-0 flex justify-center items-center"
+			v-if="binlog_index_state_loaded && this.$resources?.timeline?.loading">
 			<div class="flex gap-2 text-base text-gray-800">
 				<Spinner class="w-4" />
 				Building timeline...
 			</div>
 		</div>
 
-		<div
-			class="z-2000 bg-white absolute inset-0 flex justify-center items-center"
-			v-if="binlog_index_state_loaded && binlog_indexer_running"
-		>
+		<div class="z-2000 bg-white absolute inset-0 flex justify-center items-center"
+			v-if="binlog_index_state_loaded && binlog_indexer_running">
 			<div class="flex flex-col items-center gap-3 text-center px-6 max-w-lg">
 				<lucide-construction class="h-8 w-8 text-gray-800 mb-1" />
 				<h2 class="text-xl font-semibold text-gray-900">
@@ -255,18 +164,13 @@
 			</div>
 		</div>
 
-		<div
-			class="z-3000 bg-white absolute inset-0 flex justify-center items-center"
-			v-if="binlog_index_state_loaded && !binlog_indexer_enabled"
-		>
+		<div class="z-3000 bg-white absolute inset-0 flex justify-center items-center"
+			v-if="binlog_index_state_loaded && !binlog_indexer_enabled">
 			<div class="flex flex-col items-center gap-3 text-center px-6 max-w-lg">
 				<lucide-construction class="h-8 w-8 text-gray-800 mb-1" />
-				<h2
-					class="text-xl font-semibold text-gray-900"
-					v-if="
-						site_hosted_on_shared_server || database_server_memory < 8 * 1024
-					"
-				>
+				<h2 class="text-xl font-semibold text-gray-900" v-if="
+					site_hosted_on_shared_server || database_server_memory < 8 * 1024
+				">
 					Binlog Browser Not Available
 				</h2>
 				<h2 class="text-xl font-semibold text-gray-900" v-else>
@@ -278,23 +182,16 @@
 					This site is currently on shared hosting.
 				</p>
 				<p class="text-gray-600" v-else-if="database_server_memory < 8 * 1024">
-					<span
-						>This feature requires at least <strong>8 GB RAM</strong> on the db
-						server.</span
-					>
+					<span>This feature requires at least <strong>8 GB RAM</strong> on the db
+						server.</span>
 					<br />
 					Currently, the server has only
-					<strong>{{ Math.round(database_server_memory / 1024) }} GB RAM</strong
-					>.
+					<strong>{{ Math.round(database_server_memory / 1024) }} GB RAM</strong>.
 				</p>
 				<p class="text-gray-600" v-else>
 					Follow the
-					<a
-						href="https://docs.press.dev/user-guide/devtools/binlog-browser"
-						class="text-blue-600 underline"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+					<a href="https://docs.press.dev/user-guide/devtools/binlog-browser" class="text-blue-600 underline"
+						target="_blank" rel="noopener noreferrer">
 						documentation
 					</a>
 					to enable Binlog Indexing.
@@ -314,7 +211,7 @@ import {
 	Spinner,
 	TextInput,
 } from 'frappe-ui';
-import DatTimePicker from './extras/DateTimePicker.vue';
+import DateTimePicker from './extras/DateTimePicker.vue';
 import { formatValue } from '../../../utils/format';
 import LinkControl from '../../../components/LinkControl.vue';
 import BinlogResultTable from '../../../components/devtools/database/BinlogResultTable.vue';
@@ -328,7 +225,7 @@ export default {
 		LinkControl,
 		Select,
 		BinlogResultTable,
-		DatTimePicker,
+		DateTimePicker,
 		BinlogBrowserChart,
 		Spinner,
 		TextInput,
@@ -358,6 +255,7 @@ export default {
 			binlog_status_check_interval_ref: null,
 			timer: null,
 			event_size_comparator: '',
+			event_size: null,
 		};
 	},
 	mounted() {
@@ -402,6 +300,16 @@ export default {
 		},
 		end() {
 			this.refreshDataWithDebounce();
+		},
+		event_size_comparator(newVal) {
+			if (newVal && this.event_size) {
+				this.refreshDataWithDebounce();
+			}
+		},
+		event_size(newVal) {
+			if (newVal && this.event_size_comparator) {
+				this.refreshDataWithDebounce();
+			}
 		},
 		isBinlogIndexerAvailable(newVal) {
 			if (!newVal) return;
@@ -541,6 +449,14 @@ export default {
 				this.tableName = url.searchParams.get('table');
 			}
 
+			if (url.searchParams.get('event_size_comparator')) {
+				this.event_size_comparator = url.searchParams.get('event_size_comparator');
+			}
+
+			if (url.searchParams.get('event_size')) {
+				this.event_size = parseInt(url.searchParams.get('event_size'));
+			}
+
 			if (site_name) {
 				this.site = site_name;
 			}
@@ -592,6 +508,16 @@ export default {
 				url.searchParams.delete('table');
 			}
 
+			if (this.event_size_comparator && this.event_size) {
+				url.searchParams.set('event_size_comparator', this.event_size_comparator);
+				url.searchParams.set('event_size', this.event_size);
+			} else {
+				url.searchParams.delete('event_size_comparator');
+				url.searchParams.delete('event_size');
+			}
+
+
+
 			// Only push state if it's different from the last pushed state
 			const newState = url.toString();
 			if (this.lastPushedState !== newState) {
@@ -614,6 +540,8 @@ export default {
 					end: parseInt(new Date(this.end).getTime() / 1000),
 					query_type: this.type === 'ALL' || !this.type ? null : this.type,
 					table: !this.tableName ? null : this.tableName,
+					event_size_comparator: !this.event_size_comparator ? null : this.event_size_comparator,
+					event_size: !this.event_size_comparator ? null : this.event_size,
 				},
 			});
 		},
@@ -631,6 +559,8 @@ export default {
 					query_type: this.type === 'ALL' || !this.type ? null : this.type,
 					table: !this.tableName ? null : this.tableName,
 					search_string: this.searchString,
+					event_size_comparator: !this.event_size_comparator ? null : this.event_size_comparator,
+					event_size: !this.event_size_comparator ? null : this.event_size,
 				},
 			});
 		},

@@ -3600,7 +3600,13 @@ class Site(Document, TagHelpers):
 
 	@dashboard_whitelist()
 	def fetch_binlog_timeline(  # noqa: C901
-		self, start: int, end: int, table: str | None = None, query_type: str | None = None
+		self,
+		start: int,
+		end: int,
+		table: str | None = None,
+		query_type: str | None = None,
+		event_size_comparator: Literal["gt", "lt"] | None = None,
+		event_size: int | None = None,
 	):
 		if (not self.is_binlog_indexing_enabled()) or (self.is_binlog_indexer_running()):
 			frappe.throw("Binlog indexing service is not enabled or in maintenance.")
@@ -3614,6 +3620,8 @@ class Site(Document, TagHelpers):
 			table=table,
 			type=query_type,
 			database=self.fetch_database_name(),
+			event_size_comparator=event_size_comparator,
+			event_size=event_size,
 		)
 
 		start_timestamp = data.get("start_timestamp")
@@ -3676,6 +3684,8 @@ class Site(Document, TagHelpers):
 		query_type: str | None = None,
 		table: str | None = None,
 		search_string: str | None = None,
+		event_size_comparator: Literal["gt", "lt"] | None = None,
+		event_size: int | None = None,
 	):
 		if (not self.is_binlog_indexing_enabled()) or (self.is_binlog_indexer_running()):
 			frappe.throw("Binlog indexing service is not enabled or in maintenance.")
@@ -3698,6 +3708,8 @@ class Site(Document, TagHelpers):
 			database=self.fetch_database_name(),
 			table=table,
 			search_str=search_string,
+			event_size_comparator=event_size_comparator,
+			event_size=event_size,
 		)
 
 	@dashboard_whitelist()
