@@ -3599,7 +3599,9 @@ class Site(Document, TagHelpers):
 		}
 
 	@dashboard_whitelist()
-	def fetch_binlog_timeline(self, start: int, end: int, query_type: str | None = None):  # noqa: C901
+	def fetch_binlog_timeline(  # noqa: C901
+		self, start: int, end: int, table: str | None = None, query_type: str | None = None
+	):
 		if (not self.is_binlog_indexing_enabled()) or (self.is_binlog_indexer_running()):
 			frappe.throw("Binlog indexing service is not enabled or in maintenance.")
 
@@ -3609,6 +3611,7 @@ class Site(Document, TagHelpers):
 		data = self.database_server_agent.get_binlogs_timeline(
 			start=start,
 			end=end,
+			table=table,
 			type=query_type,
 			database=self.fetch_database_name(),
 		)
@@ -3699,6 +3702,11 @@ class Site(Document, TagHelpers):
 
 	@dashboard_whitelist()
 	def fetch_queries_from_binlog(self, row_ids: dict[str, list[int]]):
+		# Don't allow to fetch more than 100 rows at a time
+		total_row_ids = sum(len(v) for v in row_ids.values())
+		if total_row_ids > 100:
+			frappe.throw("Cannot fetch more than 100 rows at a time from binlog.")
+
 		return self.database_server_agent.get_binlog_queries(
 			row_ids=row_ids, database=self.fetch_database_name()
 		)

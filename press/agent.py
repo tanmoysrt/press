@@ -1468,10 +1468,18 @@ Response: {reason or getattr(result, "text", "Unknown")}
 			"Remove Binlogs From Indexer", "/database/binlogs/indexer/remove", data={"binlogs": binlogs}
 		)
 
-	def get_binlogs_timeline(self, start: int, end: int, database: str, type: str | None = None):
+	def get_binlogs_timeline(
+		self, start: int, end: int, database: str, table: str | None = None, type: str | None = None
+	):
 		return self.post(
 			"/database/binlogs/indexer/timeline",
-			data={"start_timestamp": start, "end_timestamp": end, "database": database, "type": type},
+			data={
+				"start_timestamp": start,
+				"end_timestamp": end,
+				"database": database,
+				"table": table,
+				"type": type,
+			},
 		)
 
 	def search_binlogs(
