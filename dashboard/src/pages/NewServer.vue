@@ -16,7 +16,7 @@
 
 	<div v-else-if="serverEnabled" class="flex w-full justify-center px-4 sm:px-5">
 		<div v-if="options"
-			class="pb-[50vh] pt-8 sm:pt-12 flex flex-col lg:flex-row gap-8 lg:gap-[60px] w-8xl">
+			class="pb-[50vh] pt-4 sm:pt-8 lg:pt-8 flex flex-col lg:flex-row lg:justify-center gap-8 lg:gap-[60px] w-full max-w-8xl">
 			<!-- Main configuration section -->
 			<div class="w-full lg:min-w-[42rem] lg:max-w-[42rem] space-y-8">
 				<div class="flex flex-col" v-if="$team.doc?.hybrid_servers_enabled">
@@ -67,7 +67,8 @@
 									<template #prefix>
 										<lucide-help-circle class="h-4 w-4 text-gray-700" />
 									</template>
-									Compare Features
+									<span class="hidden sm:inline">Compare Features</span>
+									<span class="sm:hidden">Compare</span>
 								</Button>
 							</div>
 						</div>
@@ -140,7 +141,8 @@
 									<template #prefix>
 										<lucide-help-circle class="h-4 w-4 text-gray-700" />
 									</template>
-									Know More
+									<span class="hidden sm:inline">Know More</span>
+									<span class="sm:hidden">More</span>
 								</Button>
 							</div>
 						</div>
@@ -192,7 +194,8 @@
 											<template #prefix>
 												<lucide-help-circle class="h-4 w-4 text-gray-700" />
 											</template>
-											Learn About Instance Types
+											<span class="hidden sm:inline">Learn About Instance Types</span>
+											<span class="sm:hidden">Learn More</span>
 										</Button>
 									</div>
 									<div v-else>
@@ -202,7 +205,8 @@
 											<template #prefix>
 												<lucide-help-circle class="h-4 w-4 text-gray-700" />
 											</template>
-											Learn About Unified Server
+											<span class="hidden sm:inline">Learn About Unified Server</span>
+											<span class="sm:hidden">Learn More</span>
 										</Button>
 									</div>
 								</div>
@@ -275,7 +279,8 @@
 											<template #prefix>
 												<lucide-help-circle class="h-4 w-4 text-gray-700" />
 											</template>
-											Learn About Instance Types
+											<span class="hidden sm:inline">Learn About Instance Types</span>
+											<span class="sm:hidden">Learn More</span>
 										</Button>
 									</div>
 								</div>
@@ -496,7 +501,7 @@
 			</div>
 
 			<!-- Desktop only Summary -->
-			<div class="hidden lg:block rounded border-gray-400 bg-white text-gray-900 ring-gray-200 border p-6 h-fit w-full w-[25rem] space-y-4"
+			<div class="hidden lg:block sticky top-[4.5rem] rounded border-gray-400 bg-white text-gray-900 ring-gray-200 border p-6 h-fit w-full w-[25rem] space-y-4"
 				v-if="showSummary">
 				<h2 class="text-md font-semibold">Summary</h2>
 
