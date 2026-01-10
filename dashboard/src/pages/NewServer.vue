@@ -16,7 +16,7 @@
 
 	<div v-else-if="serverEnabled" class="flex w-full justify-center px-4 sm:px-5">
 		<div v-if="options"
-			class="pb-[50vh] pt-8 sm:pt-12 flex flex-col lg:flex-row gap-8 lg:gap-[60px] w-full max-w-7xl">
+			class="pb-[50vh] pt-8 sm:pt-12 flex flex-col lg:flex-row gap-8 lg:gap-[60px] w-8xl">
 			<!-- Main configuration section -->
 			<div class="w-full lg:min-w-[42rem] lg:max-w-[42rem] space-y-8">
 				<div class="flex flex-col" v-if="$team.doc?.hybrid_servers_enabled">
