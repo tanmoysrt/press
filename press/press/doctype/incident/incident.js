@@ -22,9 +22,11 @@ frappe.ui.form.on('Incident', {
 				);
 			}
 		});
-		frm.call('get_down_site').then((r) => {
-			if (!r.message) return;
-			frm.add_web_link(`https://${r.message}`, __('Visit Down Site'));
-		});
+		if (!frm.is_new()) {
+			frm.call('get_down_site').then((r) => {
+				if (!r.message) return;
+				frm.add_web_link(`https://${r.message}`, __('Visit Down Site'));
+			});
+		}
 	},
 });

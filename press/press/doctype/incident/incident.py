@@ -11,11 +11,11 @@ from typing import TYPE_CHECKING
 
 import frappe
 import requests
+from frappe.model.document import Document
 from frappe.types.DF import Phone
 from frappe.utils import cint
 from frappe.utils.background_jobs import enqueue_doc
 from frappe.utils.synchronization import filelock
-from frappe.website.website_generator import WebsiteGenerator
 from playwright.sync_api import Page, sync_playwright
 from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 from tenacity.retry import retry_if_not_result
@@ -69,7 +69,7 @@ CALL_REPEAT_INTERVAL_DAY = 15 * 60
 CALL_REPEAT_INTERVAL_NIGHT = 20 * 60
 
 
-class Incident(WebsiteGenerator):
+class Incident(Document):
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
 
@@ -78,39 +78,29 @@ class Incident(WebsiteGenerator):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
-		from press.press.doctype.incident_alerts.incident_alerts import IncidentAlerts
-		from press.press.doctype.incident_suggestion.incident_suggestion import IncidentSuggestion
+		from press.press.doctype.incident_log.incident_log import IncidentLog
 		from press.press.doctype.incident_updates.incident_updates import IncidentUpdates
 
 		acknowledged_by: DF.Link | None
-		alert: DF.Link | None
-		alerts: DF.Table[IncidentAlerts]
 		called_customer: DF.Check
+		category: DF.Literal["Incident", "Notice", "Maintenance", "Outage", "Service Degradation"]
 		cluster: DF.Link | None
-		corrective_suggestions: DF.Table[IncidentSuggestion]
 		description: DF.TextEditor | None
-		investigation: DF.Link | None
-		likely_cause: DF.Text | None
+		incident_logs: DF.Table[IncidentLog]
+		investigatior: DF.Link | None
 		phone_call: DF.Check
-		preventive_suggestions: DF.Table[IncidentSuggestion]
-		resolved_by: DF.Link | None
+		prometheus_alert: DF.Link | None
+		report_source: DF.SmallText | None
+		reported_by: DF.Literal["Prometheus", "Manual"]
 		resource: DF.DynamicLink | None
 		resource_type: DF.Link | None
-		route: DF.Data | None
 		server: DF.Link | None
-		show_in_website: DF.Check
 		sms_sent: DF.Check
 		status: DF.Literal[
-			"Validating",
-			"Confirmed",
-			"Acknowledged",
-			"Investigating",
-			"Resolved",
-			"Auto-Resolved",
-			"Press-Resolved",
+			"Validating", "Confirmed", "Acknowledged", "Investigating", "Resolved", "Auto-Resolved"
 		]
-		subject: DF.Data | None
 		subtype: DF.Literal["High CPU: user", "High CPU: iowait", "Disk full"]
+		summary: DF.Data | None
 		type: DF.Literal["Database Down", "Server Down", "Proxy Down"]
 		updates: DF.Table[IncidentUpdates]
 	# end: auto-generated types

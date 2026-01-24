@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "hash",
  "creation": "2023-10-16 18:45:05.744563",
  "default_view": "List",
  "doctype": "DocType",
@@ -8,37 +9,37 @@
  "engine": "InnoDB",
  "field_order": [
   "alerts_tab",
-  "phone_call",
-  "alert",
   "status",
-  "type",
-  "subtype",
+  "category",
   "acknowledged_by",
   "column_break_smnd",
+  "cluster",
+  "type",
+  "subtype",
+  "column_break_mcty",
   "server",
   "resource_type",
   "resource",
-  "cluster",
-  "resolved_by",
-  "investigation",
   "section_break_kjey",
-  "subject",
   "description",
+  "details_tab",
   "preliminary_investigation_section",
-  "likely_cause",
-  "column_break_jrzi",
-  "corrective_suggestions",
-  "preventive_suggestions",
+  "summary",
+  "incident_logs",
+  "updates_tab",
+  "reported_by",
+  "investigatior",
+  "column_break_uknh",
+  "prometheus_alert",
+  "report_source",
   "section_break_bjjy",
   "updates",
+  "section_break_rwit",
   "called_customer",
-  "updates_tab",
-  "alerts",
-  "section_break_aevb",
-  "column_break_rbwa",
-  "route",
-  "sms_sent",
-  "show_in_website"
+  "column_break_hqys",
+  "phone_call",
+  "column_break_rdqv",
+  "sms_sent"
  ],
  "fields": [
   {
@@ -63,7 +64,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Validating\nConfirmed\nAcknowledged\nInvestigating\nResolved\nAuto-Resolved\nPress-Resolved"
+   "options": "Validating\nConfirmed\nAcknowledged\nInvestigating\nResolved\nAuto-Resolved"
   },
   {
    "default": "Database Down",
@@ -77,12 +78,6 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "alerts",
-   "fieldtype": "Table",
-   "label": "Alerts",
-   "options": "Incident Alerts"
-  },
-  {
    "default": "0",
    "fieldname": "sms_sent",
    "fieldtype": "Check",
@@ -94,24 +89,11 @@
    "label": "Overview"
   },
   {
-   "fieldname": "updates_tab",
-   "fieldtype": "Tab Break",
-   "label": "Alerts"
-  },
-  {
    "fieldname": "acknowledged_by",
    "fieldtype": "Link",
    "label": "Acknowledged By",
    "mandatory_depends_on": "eval: doc.status==\"Acknowledged\";",
    "options": "User"
-  },
-  {
-   "fieldname": "column_break_rbwa",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "section_break_aevb",
-   "fieldtype": "Section Break"
   },
   {
    "fieldname": "updates",
@@ -120,36 +102,13 @@
    "options": "Incident Updates"
   },
   {
-   "fieldname": "route",
-   "fieldtype": "Data",
-   "label": "Route"
-  },
-  {
-   "default": "0",
-   "fieldname": "show_in_website",
-   "fieldtype": "Check",
-   "label": "Show in Website"
-  },
-  {
    "fieldname": "section_break_kjey",
-   "fieldtype": "Section Break",
-   "label": "Details"
-  },
-  {
-   "fieldname": "subject",
-   "fieldtype": "Data",
-   "label": "Subject"
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "description",
    "fieldtype": "Text Editor",
-   "label": "Description"
-  },
-  {
-   "fieldname": "resolved_by",
-   "fieldtype": "Link",
-   "label": "Resolved By",
-   "options": "User"
+   "label": "System Reported Findings"
   },
   {
    "default": "1",
@@ -158,21 +117,15 @@
    "label": "Phone Call"
   },
   {
-   "fieldname": "alert",
-   "fieldtype": "Link",
-   "label": "Alert",
-   "options": "Prometheus Alert Rule"
-  },
-  {
    "fieldname": "resource_type",
    "fieldtype": "Link",
-   "label": "Resource Type",
+   "label": "Affected Resource Type",
    "options": "DocType"
   },
   {
    "fieldname": "resource",
    "fieldtype": "Dynamic Link",
-   "label": "Resource",
+   "label": "Affected Resource",
    "options": "resource_type"
   },
   {
@@ -183,51 +136,97 @@
   },
   {
    "fieldname": "preliminary_investigation_section",
-   "fieldtype": "Section Break",
-   "label": "Preliminary Investigation"
-  },
-  {
-   "fieldname": "likely_cause",
-   "fieldtype": "Text",
-   "label": "Likely Causes"
-  },
-  {
-   "fieldname": "column_break_jrzi",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "preventive_suggestions",
-   "fieldtype": "Table",
-   "label": "Preventive Suggestions",
-   "options": "Incident Suggestion"
-  },
-  {
-   "fieldname": "corrective_suggestions",
-   "fieldtype": "Table",
-   "label": "Corrective Suggestions",
-   "options": "Incident Suggestion"
-  },
-  {
-   "fieldname": "investigation",
-   "fieldtype": "Link",
-   "label": "Investigation",
-   "options": "Incident Investigator"
+   "fieldtype": "Section Break"
   },
   {
    "default": "0",
    "fieldname": "called_customer",
    "fieldtype": "Check",
    "label": "Called Customer"
+  },
+  {
+   "fieldname": "section_break_rwit",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_hqys",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_rdqv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_mcty",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "updates_tab",
+   "fieldtype": "Tab Break",
+   "label": "Information"
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "label": "Category",
+   "options": "Incident\nNotice\nMaintenance\nOutage\nService Degradation"
+  },
+  {
+   "description": "These informations will be visible to users, unless the internal flag on specific record has been enabled",
+   "fieldname": "incident_logs",
+   "fieldtype": "Table",
+   "label": "Incident Logs",
+   "options": "Incident Log"
+  },
+  {
+   "fieldname": "summary",
+   "fieldtype": "Data",
+   "label": "Summary",
+   "length": 400
+  },
+  {
+   "fieldname": "details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Details"
+  },
+  {
+   "depends_on": "eval: doc.reported_by == \"Prometheus\"",
+   "fieldname": "prometheus_alert",
+   "fieldtype": "Link",
+   "label": "Prometheus Alert",
+   "mandatory_depends_on": "eval: doc.reported_by == \"Prometheus\"",
+   "options": "Prometheus Alert Rule"
+  },
+  {
+   "fieldname": "reported_by",
+   "fieldtype": "Select",
+   "label": "Reported By",
+   "options": "Prometheus\nManual"
+  },
+  {
+   "fieldname": "column_break_uknh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.reported_by == \"Manual\"",
+   "fieldname": "report_source",
+   "fieldtype": "Small Text",
+   "label": "Report Source",
+   "mandatory_depends_on": "eval: doc.reported_by == \"Manual\""
+  },
+  {
+   "fieldname": "investigatior",
+   "fieldtype": "Link",
+   "label": "Investigatior",
+   "options": "Incident Investigator"
   }
  ],
- "has_web_view": 1,
- "index_web_pages_for_search": 1,
- "is_published_field": "show_in_website",
  "links": [],
- "modified": "2025-09-30 17:33:41.729833",
+ "modified": "2026-01-25 01:07:59.639910",
  "modified_by": "Administrator",
  "module": "Press",
  "name": "Incident",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {
@@ -243,7 +242,6 @@
    "write": 1
   }
  ],
- "route": "incidents",
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",

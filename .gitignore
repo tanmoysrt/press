@@ -168,3 +168,9 @@ press/public/css/marketplace-next.css
 # IDE
 .idea
 .vscode
+
+# Libs folder
+db_calc
+mariadb_table_usage
+scratchpad.md
+verify_accuracy.py
