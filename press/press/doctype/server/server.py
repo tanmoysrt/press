@@ -1130,7 +1130,9 @@ class BaseServer(Document, TagHelpers):
 		return find(machine.volumes, lambda v: v.device == "/dev/sda1")
 
 	def update_virtual_machine_name(self):
-		virtual_machine = frappe.get_doc("Virtual Machine", self.virtual_machine)
+		virtual_machine: VirtualMachine = frappe.get_doc("Virtual Machine", self.virtual_machine)
+		if not virtual_machine.instance_id:
+			return None
 		return virtual_machine.update_name_tag(self.name)
 
 	def create_subscription(self, plan):
