@@ -6,7 +6,7 @@ from typing import cast
 
 import frappe
 
-from press.ai_investigator.investigation import runner
+from press.ai_investigator.investigation import rca, runner
 from press.ai_investigator.mcp import mcp
 from press.ai_investigator.permissions import system_manager_only
 from press.ai_investigator.redaction import redact
@@ -235,3 +235,65 @@ def check_recent_changes(
 		source="MCP",
 	)
 	return cast("dict", redact(_investigation_result(investigation_name)))
+
+
+@mcp.tool()
+@system_manager_only
+def get_investigation_status(investigation_name: str) -> dict:
+	"""Return current status and summary of an investigation.
+
+	Args:
+		investigation_name: Operational Investigation name (e.g. OI-2026-00001).
+	"""
+	if not frappe.db.exists("Operational Investigation", investigation_name):
+		frappe.throw(f"Investigation '{investigation_name}' not found")
+	doc = frappe.get_doc("Operational Investigation", investigation_name)
+	log_count = frappe.db.count(
+		"Operational Investigation Log",
+		filters={"investigation": investigation_name},
+	)
+	state = doc.state_json or {}
+	return cast(
+		"dict",
+		redact(
+			{
+				"name": doc.name,
+				"status": doc.status,
+				"summary": doc.summary or "",
+				"primary_cause": doc.primary_cause or "",
+				"confidence": doc.confidence or 0.0,
+				"recommended_next_checks": state.get("recommended_next_checks", []),
+				"log_count": log_count,
+				"last_updated": str(doc.modified),
+			}
+		),
+	)
+
+
+@mcp.tool()
+@system_manager_only
+def continue_investigation(investigation_name: str, instruction: str) -> dict:
+	"""Continue an existing investigation with a follow-up instruction.
+
+	Args:
+		investigation_name: Operational Investigation name.
+		instruction: Follow-up question or check request.
+	"""
+	if not frappe.db.exists("Operational Investigation", investigation_name):
+		frappe.throw(f"Investigation '{investigation_name}' not found")
+	result = runner.continue_investigation(investigation_name, instruction)
+	return cast("dict", redact(result))
+
+
+@mcp.tool()
+@system_manager_only
+def finalize_rca(investigation_name: str) -> dict:
+	"""Generate and store the RCA markdown for a completed investigation.
+
+	Args:
+		investigation_name: Operational Investigation name.
+	"""
+	if not frappe.db.exists("Operational Investigation", investigation_name):
+		frappe.throw(f"Investigation '{investigation_name}' not found")
+	markdown = rca.finalize_rca(investigation_name)
+	return cast("dict", redact({"investigation": investigation_name, "rca_markdown": markdown}))

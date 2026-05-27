@@ -16,6 +16,17 @@ from press.ai_investigator.investigation import evidence, playbooks, router, tar
 DEFAULT_TIME_RANGE_HOURS = 1
 MAX_TIME_RANGE_HOURS = 24
 
+_INSTRUCTION_TOOL_MAP: list[tuple[list[str], list[str]]] = [
+	(["db ", "database", "slow query"], ["get_slow_queries", "get_frequent_slow_queries"]),
+	(["error log", "errors", "exception"], ["get_site_error_logs"]),
+	(["deploy", "deployment", "caused by deploy"], ["get_recent_jobs", "get_document_versions"]),
+	(["slow api", "slow endpoint", "api perform"], ["get_slow_apis"]),
+	(["worker", "queue", "background"], ["get_bench_processes"]),
+	(["uptime", "down", "outage"], ["get_uptime", "get_site_error_logs"]),
+	(["cpu", "memory", "server resource", "infra"], ["get_server_basic_metrics"]),
+	(["request", "traffic", "load"], ["get_site_request_summary"]),
+]
+
 
 def start_investigation(
 	query: str | None = None,
@@ -385,3 +396,123 @@ def _handle_failure(doc, exc: Exception) -> None:
 	doc.db_set("status", "Failed", update_modified=True)
 	doc.db_set("completed_at", datetime.now(), update_modified=False)
 	frappe.db.commit()
+
+
+def continue_investigation(investigation_name: str, instruction: str) -> dict:
+	"""Run follow-up checks on an existing investigation based on a user instruction."""
+	doc = frappe.get_doc("Operational Investigation", investigation_name)
+	evidence.append_log(investigation_name, "message", "User", instruction)
+
+	tools_to_run = _map_instruction_to_checks(instruction)
+	ran_tools = _get_ran_tools(investigation_name)
+	time_shifted = _is_time_shift(instruction)
+
+	target = targets.resolve(
+		target_doctype=doc.target_doctype,
+		target_name=doc.target_name,
+	)
+
+	if time_shifted:
+		from_time, to_time = _shift_window(str(doc.from_time), str(doc.to_time))
+	else:
+		from_time, to_time = str(doc.from_time), str(doc.to_time)
+
+	new_findings: list[dict] = []
+	for tool_name in tools_to_run:
+		if tool_name in ran_tools and not time_shifted:
+			continue
+		step = playbooks.PlaybookStep(tool=tool_name, required=False)
+		result = _run_step(doc, step, target, from_time, to_time)
+		if result is None:
+			continue
+		finding = _extract_finding(tool_name, result)
+		if finding:
+			new_findings.append(finding)
+			evidence.log_finding(
+				doc.name,
+				finding["text"][:140],
+				finding["text"],
+				finding.get("type", "observation"),
+				finding.get("confidence", 0.5),
+			)
+
+	state = doc.state_json or {}
+	_merge_hypotheses(doc, new_findings, state.get("intent", "general"))
+
+	response_text = _build_continuation_response(new_findings, instruction)
+	evidence.append_log(investigation_name, "message", "Assistant", response_text)
+
+	if doc.status == "Needs Human" and new_findings:
+		doc.db_set("status", "Completed", update_modified=True)
+
+	frappe.db.commit()
+	return {
+		"investigation": investigation_name,
+		"response": response_text,
+		"new_findings_count": len(new_findings),
+	}
+
+
+def _map_instruction_to_checks(instruction: str) -> list[str]:
+	"""Map a natural language instruction to a list of tool names."""
+	lower = instruction.lower()
+	matched: list[str] = []
+	for keywords, tools in _INSTRUCTION_TOOL_MAP:
+		if any(kw in lower for kw in keywords):
+			matched.extend(tools)
+	if not matched:
+		return ["get_site_error_logs", "get_site_request_summary"]
+	return list(dict.fromkeys(matched))
+
+
+def _get_ran_tools(investigation_name: str) -> set[str]:
+	"""Return the set of tool names already called in this investigation."""
+	logs = frappe.get_all(
+		"Operational Investigation Log",
+		filters={"investigation": investigation_name, "type": "tool_call"},
+		fields=["title"],
+		limit=200,
+	)
+	return {log["title"] for log in logs}
+
+
+def _is_time_shift(instruction: str) -> bool:
+	"""Return True if the instruction asks to shift the time window."""
+	lower = instruction.lower()
+	return any(phrase in lower for phrase in ["previous hour", "last hour", "hour ago", "compare", "before"])
+
+
+def _shift_window(from_time: str, to_time: str) -> tuple[str, str]:
+	"""Shift both window endpoints back by one hour."""
+	shift = timedelta(hours=1)
+	new_from = datetime.fromisoformat(from_time) - shift
+	new_to = datetime.fromisoformat(to_time) - shift
+	return str(new_from), str(new_to)
+
+
+def _merge_hypotheses(doc, new_findings: list[dict], intent: str) -> None:
+	"""Merge new hypotheses into the investigation's state_json, boosting existing ones."""
+	state = doc.state_json or {}
+	existing: list[dict] = state.get("current_hypotheses", [])
+	existing_titles = {h["title"]: i for i, h in enumerate(existing)}
+
+	new_hypotheses = _score_hypotheses(new_findings, intent)
+	for hyp in new_hypotheses:
+		if hyp["title"] in existing_titles:
+			idx = existing_titles[hyp["title"]]
+			boosted = min(existing[idx].get("confidence", 0.5) + 0.1, 0.95)
+			existing[idx]["confidence"] = boosted
+		else:
+			existing.append(hyp)
+			existing_titles[hyp["title"]] = len(existing) - 1
+
+	state["current_hypotheses"] = existing
+	doc.db_set("state_json", state, update_modified=False)
+
+
+def _build_continuation_response(new_findings: list[dict], instruction: str) -> str:
+	"""Build a short response text summarising the continuation run."""
+	if not new_findings:
+		return f"No new findings for: {instruction}"
+	titles = ", ".join(f["text"][:60] for f in new_findings[:5])
+	return f"Found {len(new_findings)} new observation(s): {titles}"
