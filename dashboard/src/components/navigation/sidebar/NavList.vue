@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { h, computed } from 'vue'
+import { computed, h } from 'vue'
 import { useRoute } from 'vue-router'
 import { unreadNotificationsCount } from '@/data/notifications'
 import { session } from '@/data/session'
 import { getTeam } from '@/data/team'
-import { isMac } from '@/utils/device'
 import { notifPanel, searchModalOpen } from '@/data/ui'
+import { isMac } from '@/utils/device'
 
 import { useRealtimeNotifs } from './useRealtimeNotifs'
 
@@ -102,6 +102,15 @@ const list = computed(() => {
 				['New Server'].includes(routeName) ||
 				routeName.startsWith('Server') ||
 				routeName === 'Enable Servers',
+			disabled: enforce2FA,
+		},
+
+		{
+			name: 'AI Ops',
+			icon: LucideBotMessageSquare,
+			route: '/ai',
+			isActive: routeName.startsWith('AI '),
+			condition: Boolean($team.doc?.is_desk_user),
 			disabled: enforce2FA,
 		},
 

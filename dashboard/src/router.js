@@ -484,6 +484,18 @@ let router = createRouter({
 			component: () => import('./pages/devtools/log-browser/LogBrowser.vue'),
 			props: true,
 		},
+		{
+			path: '/ai',
+			name: 'AI Investigator',
+			component: () => import('./pages/AIInvestigator.vue'),
+			meta: { isSystemManagerOnly: true },
+		},
+		{
+			path: '/ai/:name',
+			name: 'AI Investigation',
+			component: () => import('./pages/AIInvestigator.vue'),
+			meta: { isSystemManagerOnly: true },
+		},
 		...generateRoutes(),
 		// TODO: makeshift redirect fixes for /insights paths
 		{
