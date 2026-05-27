@@ -72,19 +72,19 @@ const investigationName = computed(() => route.params.name || null)
 
 const investigation = createDocumentResource({
 	doctype: 'Operational Investigation',
-	name: investigationName,
-	auto: computed(() => !!investigationName.value),
+	name: investigationName.value || '__placeholder__',
+	auto: false,
 })
 
 const logs = createListResource({
 	doctype: 'Operational Investigation Log',
-	filters: computed(() =>
-		investigationName.value ? { investigation: investigationName.value } : null,
-	),
+	filters: investigationName.value
+		? { investigation: investigationName.value }
+		: {},
 	fields: ['name', 'type', 'title', 'content', 'data_json', 'timestamp'],
 	orderBy: 'timestamp asc',
 	limit: 200,
-	auto: computed(() => !!investigationName.value),
+	auto: false,
 })
 
 // ── Polling ───────────────────────────────────────────────────────────────────
