@@ -276,15 +276,15 @@
 		"wazuh_server",
 		"ai_tab",
 		"ai_investigator_enabled",
-		"ai_investigator_anthropic_section",
-		"ai_investigator_anthropic_api_key",
-		"ai_investigator_anthropic_base_url",
-		"ai_investigator_anthropic_custom_headers_json",
+		"anthropic_section",
+		"anthropic_api_key",
+		"anthropic_base_url",
+		"anthropic_custom_headers_json",
 		"column_break_tyyq",
-		"ai_investigator_anthropic_default_model",
-		"ai_investigator_anthropic_default_opus_model",
-		"ai_investigator_anthropic_default_sonnet_model",
-		"ai_investigator_anthropic_default_haiku_model"
+		"anthropic_default_model",
+		"anthropic_default_opus_model",
+		"anthropic_default_sonnet_model",
+		"anthropic_default_haiku_model"
 	],
 	"fields": [
 		{
@@ -1761,42 +1761,42 @@
 			"label": "AI Ops Enabled"
 		},
 		{
-			"fieldname": "ai_investigator_anthropic_section",
+			"fieldname": "anthropic_section",
 			"fieldtype": "Section Break",
 			"label": "Anthropic"
 		},
 		{
-			"fieldname": "ai_investigator_anthropic_api_key",
+			"fieldname": "anthropic_api_key",
 			"fieldtype": "Password",
 			"label": "API Key"
 		},
 		{
-			"fieldname": "ai_investigator_anthropic_base_url",
+			"fieldname": "anthropic_base_url",
 			"fieldtype": "Data",
 			"label": "Base URL"
 		},
 		{
-			"fieldname": "ai_investigator_anthropic_default_model",
+			"fieldname": "anthropic_default_model",
 			"fieldtype": "Data",
 			"label": "Default Model"
 		},
 		{
-			"fieldname": "ai_investigator_anthropic_default_opus_model",
+			"fieldname": "anthropic_default_opus_model",
 			"fieldtype": "Data",
 			"label": "Default Opus Model"
 		},
 		{
-			"fieldname": "ai_investigator_anthropic_default_sonnet_model",
+			"fieldname": "anthropic_default_sonnet_model",
 			"fieldtype": "Data",
 			"label": "Default Sonnet Model"
 		},
 		{
-			"fieldname": "ai_investigator_anthropic_default_haiku_model",
+			"fieldname": "anthropic_default_haiku_model",
 			"fieldtype": "Data",
 			"label": "Default Haiku Model"
 		},
 		{
-			"fieldname": "ai_investigator_anthropic_custom_headers_json",
+			"fieldname": "anthropic_custom_headers_json",
 			"fieldtype": "JSON",
 			"label": "Custom Headers (JSON)"
 		},
@@ -1807,7 +1807,7 @@
 	],
 	"issingle": 1,
 	"links": [],
-	"modified": "2026-05-27 22:10:50.466583",
+	"modified": "2026-05-27 22:30:00.000000",
 	"modified_by": "Administrator",
 	"module": "Press",
 	"name": "Press Settings",

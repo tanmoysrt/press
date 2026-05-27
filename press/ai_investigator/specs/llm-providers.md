@@ -19,19 +19,19 @@ ai_investigator_openai_api_key: Password
 ai_investigator_openai_base_url: Data
 ai_investigator_openai_default_model: Data
 
-ai_investigator_anthropic_api_key: Password
-ai_investigator_anthropic_base_url: Data
-ai_investigator_anthropic_default_model: Data
-ai_investigator_anthropic_default_opus_model: Data
-ai_investigator_anthropic_default_sonnet_model: Data
-ai_investigator_anthropic_default_haiku_model: Data
-ai_investigator_anthropic_custom_headers_json: JSON
+anthropic_api_key: Password
+anthropic_base_url: Data
+anthropic_default_model: Data
+anthropic_default_opus_model: Data
+anthropic_default_sonnet_model: Data
+anthropic_default_haiku_model: Data
+anthropic_custom_headers_json: JSON
 
 ai_investigator_request_timeout_seconds: Int
 ai_investigator_max_output_tokens: Int
 ```
 
-`ai_investigator_anthropic_custom_headers_json` stores static headers attached to every Anthropic-compatible request. Do not put secrets in this JSON unless the field is encrypted; prefer password fields for secrets.
+`anthropic_custom_headers_json` stores static headers attached to every Anthropic-compatible request. Do not put secrets in this JSON unless the field is encrypted; prefer password fields for secrets.
 
 ---
 
@@ -57,11 +57,11 @@ Stored in `Press Settings` as:
 {
   "ai_investigator_default_provider": "Anthropic Compatible",
   "ai_investigator_default_model": "opus",
-  "ai_investigator_anthropic_base_url": "http://15.206.91.192:8080",
-  "ai_investigator_anthropic_default_opus_model": "qwen3.6-27b-fp8",
-  "ai_investigator_anthropic_default_sonnet_model": "qwen3.6-27b-fp8",
-  "ai_investigator_anthropic_default_haiku_model": "qwen3.6-27b-fp8",
-  "ai_investigator_anthropic_custom_headers_json": {
+  "anthropic_base_url": "http://15.206.91.192:8080",
+  "anthropic_default_opus_model": "qwen3.6-27b-fp8",
+  "anthropic_default_sonnet_model": "qwen3.6-27b-fp8",
+  "anthropic_default_haiku_model": "qwen3.6-27b-fp8",
+  "anthropic_custom_headers_json": {
     "X-Provider": "qwen"
   }
 }
@@ -84,7 +84,7 @@ def get_client():
 Resolution rules:
 - `OpenAI` uses OpenAI API-compatible client settings.
 - `Anthropic` uses Anthropic API settings.
-- `Anthropic Compatible` uses Anthropic request shape with custom `ai_investigator_anthropic_base_url`, model aliases, and custom headers.
+- `Anthropic Compatible` uses Anthropic request shape with custom `anthropic_base_url`, model aliases, and custom headers.
 - `ai_investigator_default_model = opus|sonnet|haiku` resolves through Anthropic model alias fields.
 - explicit non-alias model names are passed through as-is.
 - custom headers are merged into every provider request after redaction/audit filtering.
