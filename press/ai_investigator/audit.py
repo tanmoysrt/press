@@ -12,6 +12,8 @@ def record_tool_call(
 	duration_ms: int,
 ) -> None:
 	"""Record every MCP tool call for traceability."""
-	frappe.logger("ai_investigator").info(
-		f"tool_call | tool={tool_name} user={user} status={status} duration_ms={duration_ms} | {input_summary}"
+	msg = (
+		f"tool_call | tool={tool_name} user={user} "
+		f"status={status} duration_ms={duration_ms} | {input_summary}"
 	)
+	frappe.logger("ai_investigator").info(msg)

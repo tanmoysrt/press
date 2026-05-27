@@ -1,0 +1,387 @@
+# Copyright (c) 2026, Frappe and contributors
+# For license information, please see license.txt
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
+
+import frappe
+
+if TYPE_CHECKING:
+	from collections.abc import Callable
+
+from press.ai_investigator.investigation import evidence, playbooks, router, targets
+
+DEFAULT_TIME_RANGE_HOURS = 1
+MAX_TIME_RANGE_HOURS = 24
+
+
+def start_investigation(
+	query: str | None = None,
+	incident_name: str | None = None,
+	target_doctype: str | None = None,
+	target_name: str | None = None,
+	from_time: str | None = None,
+	to_time: str | None = None,
+	source: str = "Manual",
+) -> str:
+	"""Create an Operational Investigation doc and enqueue the first pass.
+
+	Returns the doc name (e.g., OI-2026-00001).
+	"""
+	now = datetime.now()
+	resolved_to = datetime.fromisoformat(to_time) if to_time else now
+	default_from = resolved_to - timedelta(hours=DEFAULT_TIME_RANGE_HOURS)
+	resolved_from = datetime.fromisoformat(from_time) if from_time else default_from
+
+	# Clamp time range
+	if (resolved_to - resolved_from).total_seconds() > MAX_TIME_RANGE_HOURS * 3600:
+		resolved_from = resolved_to - timedelta(hours=MAX_TIME_RANGE_HOURS)
+
+	doc = frappe.get_doc(
+		{
+			"doctype": "Operational Investigation",
+			"title": query or (f"Incident {incident_name}" if incident_name else "Investigation"),
+			"source": source,
+			"status": "Queued",
+			"incident": incident_name,
+			"target_doctype": target_doctype,
+			"target_name": target_name,
+			"from_time": resolved_from,
+			"to_time": resolved_to,
+			"started_by": frappe.session.user,
+			"state_json": {
+				"query": query,
+				"intent": None,
+				"time_window": {
+					"from": str(resolved_from),
+					"to": str(resolved_to),
+				},
+				"current_hypotheses": [],
+				"recommended_next_checks": [],
+				"recommended_actions": [],
+				"last_error": None,
+			},
+		}
+	)
+	doc.insert(ignore_permissions=True)
+	frappe.db.commit()
+
+	job = frappe.enqueue(
+		"press.ai_investigator.investigation.runner.run_first_pass",
+		investigation_name=doc.name,
+		queue="long",
+		timeout=600,
+	)
+	doc.db_set("background_job_id", job.id if hasattr(job, "id") else "", update_modified=False)
+	frappe.db.commit()
+
+	return doc.name
+
+
+def run_first_pass(investigation_name: str) -> None:
+	"""Run the investigation: classify intent → resolve target → run playbook → store findings."""
+	doc = frappe.get_doc("Operational Investigation", investigation_name)
+	doc.db_set("status", "Running", update_modified=True)
+	doc.db_set("started_at", datetime.now(), update_modified=False)
+	frappe.db.commit()
+
+	try:
+		_execute_first_pass(doc)
+	except Exception as exc:
+		_handle_failure(doc, exc)
+		raise
+
+
+def _execute_first_pass(doc) -> None:
+	"""Inner pass: classify → resolve → run steps → score hypotheses → update doc."""
+	state = doc.state_json or {}
+	from_time = str(doc.from_time)
+	to_time = str(doc.to_time)
+
+	incident_doc = _fetch_incident_doc(doc.incident)
+	intent = router.classify_intent(state.get("query") or doc.title, incident=incident_doc)
+	state["intent"] = intent
+
+	target = targets.resolve(
+		query=state.get("query"),
+		incident=incident_doc,
+		target_doctype=doc.target_doctype,
+		target_name=doc.target_name,
+	)
+	_update_target_fields(doc, target)
+
+	findings = _run_playbook_steps(doc, playbooks.get_playbook(intent), target, from_time, to_time)
+	hypotheses = _score_hypotheses(findings, intent)
+	for hyp in hypotheses:
+		evidence.log_hypothesis(doc.name, hyp["title"], hyp["confidence"], hyp["evidence"])
+
+	primary_cause, confidence = _determine_primary_cause(hypotheses, findings)
+	state["current_hypotheses"] = hypotheses
+	final_status = "Completed" if confidence >= 0.4 else "Needs Human"
+
+	doc.db_set("status", final_status, update_modified=True)
+	doc.db_set("completed_at", datetime.now(), update_modified=False)
+	doc.db_set("last_run_at", datetime.now(), update_modified=False)
+	doc.db_set("summary", _build_summary(intent, target, findings), update_modified=False)
+	doc.db_set("primary_cause", primary_cause or "", update_modified=False)
+	doc.db_set("confidence", confidence, update_modified=False)
+	doc.db_set("state_json", state, update_modified=False)
+	frappe.db.commit()
+
+
+def _fetch_incident_doc(incident_name: str | None) -> dict | None:
+	"""Fetch incident fields needed for target resolution."""
+	if not incident_name:
+		return None
+	return frappe.db.get_value(
+		"Incident",
+		incident_name,
+		["name", "server", "cluster", "status", "type", "subject"],
+		as_dict=True,
+	)
+
+
+def _update_target_fields(doc, target: dict) -> None:
+	"""Write resolved target and related resources back to the investigation doc."""
+	related = target.get("related", {})
+	fields: dict[str, str] = {}
+	if target.get("target_doctype") and not doc.target_doctype:
+		fields["target_doctype"] = target["target_doctype"]
+	if target.get("target_name") and not doc.target_name:
+		fields["target_name"] = target["target_name"]
+	if related.get("server") and not doc.affected_server:
+		fields["affected_server"] = related["server"]
+	if related.get("bench") and not doc.affected_bench:
+		fields["affected_bench"] = related["bench"]
+	if related.get("database_server") and not doc.affected_database_server:
+		fields["affected_database_server"] = related["database_server"]
+	for field_name, value in fields.items():
+		doc.db_set(field_name, value, update_modified=False)
+
+
+def _run_playbook_steps(doc, steps: list, target: dict, from_time: str, to_time: str) -> list[dict]:
+	"""Execute all playbook steps and return the list of findings."""
+	findings: list[dict] = []
+	tool_results: dict[str, object] = {}
+
+	for step in steps:
+		if step.condition and step.condition not in tool_results:
+			continue
+		result = _run_step(doc, step, target, from_time, to_time)
+		if result is None:
+			continue
+		tool_results[step.tool] = result
+		finding = _extract_finding(step.tool, result)
+		if finding:
+			findings.append(finding)
+			evidence.log_finding(
+				doc.name,
+				finding["text"][:140],
+				finding["text"],
+				finding.get("type", "observation"),
+				finding.get("confidence", 0.5),
+			)
+	return findings
+
+
+def _run_step(doc, step, target: dict, from_time: str, to_time: str) -> object:
+	"""Execute one playbook step, catch errors on non-required steps."""
+	try:
+		return _call_tool(step.tool, doc, target, from_time, to_time)
+	except Exception as exc:
+		evidence.append_log(doc.name, "error", f"{step.tool} failed", str(exc))
+		doc.db_set("error_count", (doc.error_count or 0) + 1, update_modified=False)
+		frappe.db.commit()
+		if step.required:
+			raise
+		return None
+
+
+def _call_tool(tool_name: str, doc, target: dict, from_time: str, to_time: str) -> object:
+	"""Dispatch to the correct tool function with resolved parameters."""
+	import time
+
+	from press.ai_investigator import audit
+
+	target_name = target.get("target_name") or doc.target_name or ""
+	target_doctype = target.get("target_doctype") or doc.target_doctype or ""
+	related = target.get("related", {})
+	site = related.get("site") or (target_name if target_doctype == "Site" else None)
+	server = related.get("server") or (target_name if target_doctype == "Server" else None)
+	bench = related.get("bench") or (target_name if target_doctype == "Bench" else None)
+
+	from press.ai_investigator.tools import jobs, logs, metrics
+	from press.ai_investigator.tools.documents import get_document_versions
+	from press.ai_investigator.tools.incidents import get_incident_details
+
+	dispatch: dict[str, Callable[[], object]] = {
+		"get_incident_details": lambda: get_incident_details(incident_name=doc.incident),
+		"get_recent_jobs": (
+			lambda: jobs.get_recent_jobs(
+				target_doctype=target_doctype,
+				target_name=target_name,
+				from_time=from_time,
+				to_time=to_time,
+			)
+			if target_doctype and target_name
+			else []
+		),
+		"get_site_error_logs": (
+			lambda: logs.get_site_error_logs(site=site, from_time=from_time, to_time=to_time) if site else []
+		),
+		"get_site_request_summary": (
+			lambda: metrics.get_site_request_summary(site=site, from_time=from_time, to_time=to_time)
+			if site
+			else {}
+		),
+		"get_server_basic_metrics": (
+			lambda: metrics.get_server_basic_metrics(server=server, from_time=from_time, to_time=to_time)
+			if server
+			else {}
+		),
+		"get_slow_apis": (
+			lambda: logs.get_slow_apis(site=site, from_time=from_time, to_time=to_time) if site else []
+		),
+		"get_slow_queries": (
+			lambda: logs.get_slow_queries(site=site, from_time=from_time, to_time=to_time) if site else []
+		),
+		"get_frequent_slow_queries": (
+			lambda: logs.get_frequent_slow_queries(site=site, from_time=from_time, to_time=to_time)
+			if site
+			else []
+		),
+		"get_uptime": (
+			lambda: metrics.get_uptime(site=site, from_time=from_time, to_time=to_time) if site else {}
+		),
+		"get_bench_processes": (lambda: jobs.get_bench_processes(server=server) if server else {}),
+		"list_processes": (lambda: jobs.list_processes(server=server) if server else []),
+		"get_bench_log": (
+			lambda: logs.get_bench_log(
+				bench=bench, log_type="frappe.log", from_time=from_time, to_time=to_time
+			)
+			if bench
+			else ""
+		),
+		"get_document_versions": (
+			lambda: get_document_versions(doctype=target_doctype, name=target_name)
+			if target_doctype and target_name
+			else []
+		),
+	}
+
+	fn = dispatch.get(tool_name)
+	if fn is None:
+		return None
+
+	start = time.monotonic()
+	result = fn()
+	duration_ms = int((time.monotonic() - start) * 1000)
+
+	evidence.log_tool_call(
+		doc.name,
+		tool_name,
+		{"target": target_name, "from": from_time, "to": to_time},
+		_summarise(result),
+		duration_ms,
+		"success",
+	)
+	audit.record_tool_call(tool_name, frappe.session.user, target_name, "success", duration_ms)
+	return result
+
+
+def _summarise(result: object) -> str:
+	"""One-line summary of a tool result for log storage."""
+	if result is None:
+		return "no data"
+	if isinstance(result, list):
+		return f"{len(result)} items"
+	if isinstance(result, dict):
+		return f"dict with keys: {', '.join(list(result.keys())[:5])}"
+	text = str(result)
+	return text[:200] if len(text) > 200 else text
+
+
+def _extract_finding(tool_name: str, result: object) -> dict | None:
+	"""Extract a finding from a tool result."""
+	if not result:
+		return None
+	if isinstance(result, list) and len(result) == 0:
+		return None
+
+	is_list = isinstance(result, list)
+	n = len(result) if is_list else 0  # type: ignore[arg-type]
+	summaries: dict[str, str] = {
+		"get_site_error_logs": f"Found {n} error log entries" if is_list else "Error logs retrieved",
+		"get_slow_queries": f"Found {n} slow queries" if is_list else "Slow queries retrieved",
+		"get_slow_apis": f"Found {n} slow API paths" if is_list else "Slow APIs retrieved",
+		"get_frequent_slow_queries": (
+			f"Found {n} frequent slow query patterns"
+			if isinstance(result, list)
+			else "Frequent slow queries retrieved"
+		),
+	}
+
+	text = summaries.get(tool_name, f"{tool_name}: {_summarise(result)}")
+	return {"type": "observation", "text": text, "source": tool_name, "confidence": 0.5}
+
+
+def _score_hypotheses(findings: list[dict], intent: str) -> list[dict]:
+	"""Produce simple scored hypotheses from the findings list."""
+	if not findings:
+		return []
+
+	hypothesis_map: dict[str, dict] = {
+		"get_site_error_logs": {
+			"title": "Application errors detected",
+			"evidence": "Error logs show exceptions during the investigation window.",
+			"confidence": 0.7,
+		},
+		"get_slow_queries": {
+			"title": "Slow database queries impacting performance",
+			"evidence": "Slow query log shows queries exceeding threshold.",
+			"confidence": 0.65,
+		},
+		"get_server_basic_metrics": {
+			"title": "Server resource pressure",
+			"evidence": "Server metrics retrieved for analysis.",
+			"confidence": 0.5,
+		},
+	}
+
+	hypotheses = []
+	seen = set()
+	for finding in findings:
+		source = finding.get("source", "")
+		if source in hypothesis_map and source not in seen:
+			seen.add(source)
+			hypotheses.append(hypothesis_map[source])
+
+	return hypotheses
+
+
+def _determine_primary_cause(hypotheses: list[dict], findings: list[dict]) -> tuple[str, float]:
+	"""Pick the highest-confidence hypothesis as the primary cause."""
+	if not hypotheses:
+		return ("", 0.0)
+	best = max(hypotheses, key=lambda h: h.get("confidence", 0))
+	return (best["title"], best.get("confidence", 0.0))
+
+
+def _build_summary(intent: str, target: dict, findings: list[dict]) -> str:
+	"""Build a short human-readable summary of the investigation."""
+	target_desc = ""
+	if target.get("target_name"):
+		target_desc = f" for {target['target_doctype']} {target['target_name']}"
+
+	finding_count = len(findings)
+	return f"Investigation ({intent}){target_desc} completed. Found {finding_count} observation(s)."
+
+
+def _handle_failure(doc, exc: Exception) -> None:
+	"""Mark investigation as Failed and record the error."""
+	evidence.append_log(doc.name, "error", "Investigation failed", str(exc))
+	doc.db_set("status", "Failed", update_modified=True)
+	doc.db_set("completed_at", datetime.now(), update_modified=False)
+	frappe.db.commit()

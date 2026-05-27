@@ -199,6 +199,9 @@ doc_events = {
 			"press.press.doctype.server_firewall.server_firewall.from_server",
 		],
 	},
+	"Incident": {
+		"after_insert": "press.ai_investigator.investigation.hooks.on_incident_created",
+	},
 }
 
 # Scheduled Tasks
@@ -375,6 +378,7 @@ scheduler_events = {
 			"press.press.doctype.site.site.create_subscription_for_trial_sites",
 			"press.press.doctype.monitor_server.monitor_server.check_monitoring_servers_rate_limit_key",
 			"press.press.doctype.auto_scale_record.auto_scale_record.run_scheduled_scale_records",
+			"press.ai_investigator.investigation.hooks.poll_active_incidents",
 		],
 		"*/10 * * * *": [
 			"press.press.doctype.site.saas_pool.create",

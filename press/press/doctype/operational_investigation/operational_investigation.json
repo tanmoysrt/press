@@ -1,0 +1,244 @@
+{
+	"actions": [],
+	"allow_rename": 0,
+	"autoname": "OI-.YYYY.-.#####",
+	"creation": "2026-05-27 20:30:00.000000",
+	"doctype": "DocType",
+	"engine": "InnoDB",
+	"field_order": [
+		"title",
+		"col_break_1",
+		"source",
+		"investigation_type",
+		"status",
+		"sec_break_target",
+		"target_doctype",
+		"target_name",
+		"col_break_2",
+		"team",
+		"started_by",
+		"sec_break_related",
+		"incident",
+		"affected_site",
+		"affected_server",
+		"col_break_3",
+		"affected_bench",
+		"affected_database_server",
+		"sec_break_time",
+		"from_time",
+		"to_time",
+		"col_break_4",
+		"started_at",
+		"completed_at",
+		"last_run_at",
+		"sec_break_job",
+		"background_job_id",
+		"error_count",
+		"sec_break_findings",
+		"summary",
+		"primary_cause",
+		"confidence",
+		"rca_markdown",
+		"state_json"
+	],
+	"fields": [
+		{
+			"fieldname": "title",
+			"fieldtype": "Data",
+			"label": "Title"
+		},
+		{
+			"fieldname": "col_break_1",
+			"fieldtype": "Column Break"
+		},
+		{
+			"default": "Manual",
+			"fieldname": "source",
+			"fieldtype": "Select",
+			"label": "Source",
+			"options": "Manual\nMCP\nScheduler\nIncident Hook\nDashboard\nWebhook"
+		},
+		{
+			"fieldname": "investigation_type",
+			"fieldtype": "Select",
+			"label": "Investigation Type",
+			"options": "Incident RCA\nPerformance Check\nDowntime Explanation\nChange Correlation\nGeneral Question\nAction Planning"
+		},
+		{
+			"default": "Queued",
+			"fieldname": "status",
+			"fieldtype": "Select",
+			"label": "Status",
+			"options": "Queued\nRunning\nNeeds Human\nAction Recommended\nAction Taken\nCompleted\nInconclusive\nFailed"
+		},
+		{
+			"fieldname": "sec_break_target",
+			"fieldtype": "Section Break",
+			"label": "Target"
+		},
+		{
+			"fieldname": "target_doctype",
+			"fieldtype": "Data",
+			"label": "Target Doctype"
+		},
+		{
+			"fieldname": "target_name",
+			"fieldtype": "Dynamic Link",
+			"label": "Target Name",
+			"options": "target_doctype"
+		},
+		{
+			"fieldname": "col_break_2",
+			"fieldtype": "Column Break"
+		},
+		{
+			"fieldname": "team",
+			"fieldtype": "Link",
+			"label": "Team",
+			"options": "Team"
+		},
+		{
+			"fieldname": "started_by",
+			"fieldtype": "Link",
+			"label": "Started By",
+			"options": "User"
+		},
+		{
+			"fieldname": "sec_break_related",
+			"fieldtype": "Section Break",
+			"label": "Related Resources"
+		},
+		{
+			"fieldname": "incident",
+			"fieldtype": "Link",
+			"label": "Incident",
+			"options": "Incident"
+		},
+		{
+			"fieldname": "affected_site",
+			"fieldtype": "Link",
+			"label": "Affected Site",
+			"options": "Site"
+		},
+		{
+			"fieldname": "affected_server",
+			"fieldtype": "Link",
+			"label": "Affected Server",
+			"options": "Server"
+		},
+		{
+			"fieldname": "col_break_3",
+			"fieldtype": "Column Break"
+		},
+		{
+			"fieldname": "affected_bench",
+			"fieldtype": "Link",
+			"label": "Affected Bench",
+			"options": "Bench"
+		},
+		{
+			"fieldname": "affected_database_server",
+			"fieldtype": "Link",
+			"label": "Affected Database Server",
+			"options": "Database Server"
+		},
+		{
+			"fieldname": "sec_break_time",
+			"fieldtype": "Section Break",
+			"label": "Time Window"
+		},
+		{
+			"fieldname": "from_time",
+			"fieldtype": "Datetime",
+			"label": "From Time"
+		},
+		{
+			"fieldname": "to_time",
+			"fieldtype": "Datetime",
+			"label": "To Time"
+		},
+		{
+			"fieldname": "col_break_4",
+			"fieldtype": "Column Break"
+		},
+		{
+			"fieldname": "started_at",
+			"fieldtype": "Datetime",
+			"label": "Started At"
+		},
+		{
+			"fieldname": "completed_at",
+			"fieldtype": "Datetime",
+			"label": "Completed At"
+		},
+		{
+			"fieldname": "last_run_at",
+			"fieldtype": "Datetime",
+			"label": "Last Run At"
+		},
+		{
+			"fieldname": "sec_break_job",
+			"fieldtype": "Section Break",
+			"label": "Background Job"
+		},
+		{
+			"fieldname": "background_job_id",
+			"fieldtype": "Data",
+			"label": "Background Job ID"
+		},
+		{
+			"default": "0",
+			"fieldname": "error_count",
+			"fieldtype": "Int",
+			"label": "Error Count"
+		},
+		{
+			"fieldname": "sec_break_findings",
+			"fieldtype": "Section Break",
+			"label": "Findings"
+		},
+		{
+			"fieldname": "summary",
+			"fieldtype": "Long Text",
+			"label": "Summary"
+		},
+		{
+			"fieldname": "primary_cause",
+			"fieldtype": "Small Text",
+			"label": "Primary Cause"
+		},
+		{
+			"fieldname": "confidence",
+			"fieldtype": "Float",
+			"label": "Confidence"
+		},
+		{
+			"fieldname": "rca_markdown",
+			"fieldtype": "Long Text",
+			"label": "RCA Markdown"
+		},
+		{
+			"fieldname": "state_json",
+			"fieldtype": "JSON",
+			"label": "State JSON"
+		}
+	],
+	"istable": 0,
+	"issingle": 0,
+	"modified": "2026-05-27 20:30:00.000000",
+	"modified_by": "Administrator",
+	"module": "Press",
+	"name": "Operational Investigation",
+	"owner": "Administrator",
+	"permissions": [
+		{
+			"create": 1,
+			"delete": 1,
+			"read": 1,
+			"role": "System Manager",
+			"write": 1
+		}
+	],
+	"sort_field": "modified",
+	"sort_order": "DESC"
+}

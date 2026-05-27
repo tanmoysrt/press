@@ -171,3 +171,54 @@ def get_bench_jobs(bench: str, limit: int = 20, status: str | None = None) -> li
 		limit=limit,
 	)
 	return cast("list", redact(_normalise_status(jobs)))
+
+
+@mcp.tool()
+@system_manager_only
+def get_bench_processes(server: str) -> dict:
+	"""Fetch supervisor process status for all benches on a server.
+
+	Args:
+		server: Server name.
+	"""
+	benches = frappe.get_all("Bench", filters={"server": server, "status": "Active"}, pluck="name", limit=20)
+	result = {}
+	for bench_name in benches:
+		try:
+			bench_doc = frappe.get_doc("Bench", bench_name)
+			processes = bench_doc.supervisorctl_status()
+			result[bench_name] = [
+				{"name": p.get("name", ""), "status": p.get("status", ""), "pid": p.get("pid")}
+				for p in (processes or [])
+			]
+		except Exception as exc:
+			result[bench_name] = [{"error": str(exc)}]
+	return cast("dict", redact(result))
+
+
+@mcp.tool()
+@system_manager_only
+def list_processes(server: str) -> list:
+	"""List supervisor process statuses across all active benches on a server.
+
+	Args:
+		server: Server name.
+	"""
+	benches = frappe.get_all("Bench", filters={"server": server, "status": "Active"}, pluck="name", limit=20)
+	all_processes = []
+	for bench_name in benches:
+		try:
+			bench_doc = frappe.get_doc("Bench", bench_name)
+			processes = bench_doc.supervisorctl_status()
+			for p in processes or []:
+				all_processes.append(
+					{
+						"bench": bench_name,
+						"name": p.get("name", ""),
+						"status": p.get("status", ""),
+						"pid": p.get("pid"),
+					}
+				)
+		except Exception:
+			pass
+	return cast("list", redact(all_processes))
