@@ -9,6 +9,7 @@ mcp = frappe_mcp.MCP("frappe-cloud-investigator-mcp")
 @mcp.register()
 def handle_mcp():
 	"""MCP endpoint for FC AI Ops. Restricted to System Manager."""
+	import press.ai_investigator.tools.actions
 	import press.ai_investigator.tools.documents
 	import press.ai_investigator.tools.incidents
 	import press.ai_investigator.tools.investigation
