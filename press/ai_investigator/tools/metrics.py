@@ -227,3 +227,43 @@ def _unit(metric_type: str) -> str:
 		"db": "qps",
 	}
 	return units.get(metric_type, "")
+
+
+MAX_RAW_TIME_RANGE_HOURS = 24
+
+
+@mcp.tool()
+@system_manager_only
+def query_prometheus_raw(query: str, from_time: str, to_time: str, step: str = "60s") -> dict:
+	"""Run a raw PromQL range query against the Prometheus instance.
+
+	Args:
+		query: PromQL expression.
+		from_time: Start time (ISO: YYYY-MM-DD HH:MM:SS).
+		to_time: End time (ISO: YYYY-MM-DD HH:MM:SS).
+		step: Step duration (e.g. 60s, 5m). Default 60s.
+	"""
+	from_dt = datetime.fromisoformat(from_time)
+	to_dt = datetime.fromisoformat(to_time)
+	hours = (to_dt - from_dt).total_seconds() / 3600
+	if hours > MAX_RAW_TIME_RANGE_HOURS:
+		frappe.throw(f"Time range exceeds {MAX_RAW_TIME_RANGE_HOURS}h limit")
+
+	monitor_server = frappe.db.get_single_value("Press Settings", "monitor_server")
+	if not monitor_server:
+		return cast("dict", redact({"error": "monitor_server not configured"}))
+
+	password = get_decrypted_password("Monitor Server", monitor_server, "grafana_password")
+	url = f"https://{monitor_server}/prometheus/api/v1/query_range"
+	params: dict[str, str | float] = {
+		"query": query,
+		"start": from_dt.timestamp(),
+		"end": to_dt.timestamp(),
+		"step": step,
+	}
+	try:
+		response = requests.get(url, params=params, auth=("frappe", password), timeout=30)
+		result = response.json().get("data", {}).get("result", [])
+		return cast("dict", redact({"query": query, "result": result}))
+	except Exception as exc:
+		return cast("dict", redact({"error": str(exc)}))

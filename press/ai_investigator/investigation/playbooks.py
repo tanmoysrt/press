@@ -28,6 +28,7 @@ PLAYBOOKS: dict[str, list[PlaybookStep]] = {
 	"site_performance": [
 		_step("get_site_request_summary"),
 		_step("get_slow_apis", required=False),
+		_step("analyze_slow_endpoint", required=False),
 		_step("get_slow_queries", required=False),
 		_step("get_server_basic_metrics", required=False),
 		_step("get_recent_jobs", required=False),

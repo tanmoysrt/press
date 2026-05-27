@@ -262,3 +262,49 @@ def get_frequent_slow_queries(site: str, from_time: str, to_time: str) -> list:
 		return cast("list", redact(results))
 	except Exception as exc:
 		return cast("list", redact([{"error": str(exc)}]))
+
+
+MAX_RAW_TIME_RANGE_HOURS = 24
+MAX_ES_RESULT_SIZE = 500
+
+
+@mcp.tool()
+@system_manager_only
+def query_elasticsearch_raw(
+	index_pattern: str,
+	query: dict,
+	from_time: str | None = None,
+	to_time: str | None = None,
+	size: int = 100,
+) -> dict:
+	"""Run a raw Elasticsearch query for advanced log analysis.
+
+	Args:
+		index_pattern: Index pattern (e.g. filebeat-*).
+		query: Elasticsearch query DSL dict.
+		from_time: Optional start time (ISO: YYYY-MM-DD HH:MM:SS).
+		to_time: Optional end time (ISO: YYYY-MM-DD HH:MM:SS).
+		size: Max results (capped at 500).
+	"""
+	size = min(size, MAX_ES_RESULT_SIZE)
+
+	if from_time and to_time:
+		from_dt = datetime.fromisoformat(from_time)
+		to_dt = datetime.fromisoformat(to_time)
+		hours = (to_dt - from_dt).total_seconds() / 3600
+		if hours > MAX_RAW_TIME_RANGE_HOURS:
+			frappe.throw(f"Time range exceeds {MAX_RAW_TIME_RANGE_HOURS}h limit")
+
+	log_server = frappe.db.get_single_value("Press Settings", "log_server")
+	if not log_server:
+		return cast("dict", redact({"error": "log_server not configured"}))
+
+	password = get_decrypted_password("Log Server", log_server, "kibana_password")
+	index_pattern = index_pattern or "filebeat-*"
+	url = f"https://{log_server}/elasticsearch/{index_pattern}/_search"
+	payload = {**query, "size": size}
+	try:
+		response = requests.post(url, json=payload, auth=("frappe", password), timeout=30)
+		return cast("dict", redact(response.json()))
+	except Exception as exc:
+		return cast("dict", redact({"error": str(exc)}))

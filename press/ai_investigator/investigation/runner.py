@@ -224,6 +224,7 @@ def _call_tool(tool_name: str, doc, target: dict, from_time: str, to_time: str) 
 	bench = related.get("bench") or (target_name if target_doctype == "Bench" else None)
 
 	from press.ai_investigator.tools import jobs, logs, metrics
+	from press.ai_investigator.tools.code_analysis import analyze_slow_endpoint
 	from press.ai_investigator.tools.documents import get_document_versions
 	from press.ai_investigator.tools.incidents import get_incident_details
 
@@ -279,6 +280,11 @@ def _call_tool(tool_name: str, doc, target: dict, from_time: str, to_time: str) 
 			lambda: get_document_versions(doctype=target_doctype, name=target_name)
 			if target_doctype and target_name
 			else []
+		),
+		"analyze_slow_endpoint": (
+			lambda: analyze_slow_endpoint(site=site, endpoint_path="", from_time=from_time, to_time=to_time)
+			if site
+			else {}
 		),
 	}
 
