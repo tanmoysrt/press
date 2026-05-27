@@ -139,7 +139,7 @@ def _execute_first_pass(doc) -> None:
 	doc.db_set("summary", _build_summary(intent, target, findings), update_modified=False)
 	doc.db_set("primary_cause", primary_cause or "", update_modified=False)
 	doc.db_set("confidence", confidence, update_modified=False)
-	doc.db_set("state_json", state, update_modified=False)
+	doc.db_set("state_json", json.dumps(state), update_modified=False)
 	frappe.db.commit()
 
 
@@ -514,7 +514,7 @@ def _merge_hypotheses(doc, new_findings: list[dict], intent: str) -> None:
 			existing_titles[hyp["title"]] = len(existing) - 1
 
 	state["current_hypotheses"] = existing
-	doc.db_set("state_json", state, update_modified=False)
+	doc.db_set("state_json", json.dumps(state), update_modified=False)
 
 
 def _build_continuation_response(new_findings: list[dict], instruction: str) -> str:

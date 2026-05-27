@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import secrets
 from datetime import datetime, timedelta
 
@@ -138,7 +139,7 @@ def _mark_approved(log_doc, data: dict) -> None:
 	"""Update log data_json with approved_by."""
 	data["approved_by"] = frappe.session.user
 	data["status"] = "approved"
-	log_doc.db_set("data_json", data, update_modified=False)
+	log_doc.db_set("data_json", json.dumps(data), update_modified=False)
 	frappe.db.commit()
 
 
@@ -165,4 +166,4 @@ def _mark_executed(log_doc, data: dict, result: str) -> None:
 	data["status"] = "executed"
 	data["executed_at"] = str(datetime.now())
 	data["result"] = result
-	log_doc.db_set("data_json", data, update_modified=False)
+	log_doc.db_set("data_json", json.dumps(data), update_modified=False)
