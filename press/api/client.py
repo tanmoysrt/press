@@ -108,6 +108,8 @@ ALLOWED_DOCTYPES = [
 	"Partner Non Conformance",
 	"Team Member Resource",
 	"Release Pipeline",
+	"Operational Investigation",
+	"Operational Investigation Log",
 ]
 
 whitelisted_methods = set()

@@ -53,7 +53,7 @@
 	],
 	"istable": 0,
 	"issingle": 0,
-	"modified": "2026-05-27 20:30:00.000000",
+	"modified": "2026-05-27 23:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Press",
 	"name": "Operational Investigation Log",
@@ -65,6 +65,10 @@
 			"read": 1,
 			"role": "System Manager",
 			"write": 1
+		},
+		{
+			"read": 1,
+			"role": "Press User"
 		}
 	],
 	"sort_field": "modified",
