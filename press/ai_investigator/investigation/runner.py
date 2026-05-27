@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -107,7 +108,7 @@ def run_first_pass(investigation_name: str) -> None:
 
 def _execute_first_pass(doc) -> None:
 	"""Inner pass: classify → resolve → run steps → score hypotheses → update doc."""
-	state = doc.state_json or {}
+	state: dict = json.loads(doc.state_json) if isinstance(doc.state_json, str) else (doc.state_json or {})
 	from_time = str(doc.from_time)
 	to_time = str(doc.to_time)
 
@@ -442,7 +443,7 @@ def continue_investigation(investigation_name: str, instruction: str) -> dict:
 				finding.get("confidence", 0.5),
 			)
 
-	state = doc.state_json or {}
+	state: dict = json.loads(doc.state_json) if isinstance(doc.state_json, str) else (doc.state_json or {})
 	_merge_hypotheses(doc, new_findings, state.get("intent", "general"))
 
 	response_text = _build_continuation_response(new_findings, instruction)
@@ -498,7 +499,7 @@ def _shift_window(from_time: str, to_time: str) -> tuple[str, str]:
 
 def _merge_hypotheses(doc, new_findings: list[dict], intent: str) -> None:
 	"""Merge new hypotheses into the investigation's state_json, boosting existing ones."""
-	state = doc.state_json or {}
+	state: dict = json.loads(doc.state_json) if isinstance(doc.state_json, str) else (doc.state_json or {})
 	existing: list[dict] = state.get("current_hypotheses", [])
 	existing_titles = {h["title"]: i for i, h in enumerate(existing)}
 
