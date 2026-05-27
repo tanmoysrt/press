@@ -16,7 +16,7 @@ def has_investigation(incident_name: str) -> bool:
 
 def poll_active_incidents() -> None:
 	"""Scheduler hook — start investigation for any unattended active incident."""
-	if not frappe.db.get_single_value("Press Settings", "ai_ops_enabled"):
+	if not frappe.db.get_single_value("Press Settings", "ai_investigator_enabled"):
 		return
 
 	active = frappe.get_all(
@@ -38,7 +38,7 @@ def poll_active_incidents() -> None:
 
 def on_incident_created(doc, method=None) -> None:
 	"""Doc event hook — start investigation when a new incident is inserted."""
-	if not frappe.db.get_single_value("Press Settings", "ai_ops_enabled"):
+	if not frappe.db.get_single_value("Press Settings", "ai_investigator_enabled"):
 		return
 	if not has_investigation(doc.name):
 		frappe.enqueue(

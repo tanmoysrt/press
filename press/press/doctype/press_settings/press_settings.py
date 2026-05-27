@@ -29,6 +29,14 @@ class PressSettings(Document):
 		agent_github_access_token: DF.Data | None
 		agent_repository_owner: DF.Data | None
 		agent_sentry_dsn: DF.Data | None
+		ai_investigator_anthropic_api_key: DF.Password | None
+		ai_investigator_anthropic_base_url: DF.Data | None
+		ai_investigator_anthropic_custom_headers_json: DF.JSON | None
+		ai_investigator_anthropic_default_haiku_model: DF.Data | None
+		ai_investigator_anthropic_default_model: DF.Data | None
+		ai_investigator_anthropic_default_opus_model: DF.Data | None
+		ai_investigator_anthropic_default_sonnet_model: DF.Data | None
+		ai_investigator_enabled: DF.Check
 		app_include_script: DF.Data | None
 		asset_store_access_key: DF.Data | None
 		asset_store_bucket_name: DF.Data | None

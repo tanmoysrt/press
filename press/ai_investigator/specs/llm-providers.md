@@ -11,27 +11,27 @@ Provider configuration is stored in `Press Settings`, not hardcoded in code. Sec
 Add these fields to existing `Press Settings`:
 
 ```
-ai_ops_enabled: Check
-ai_ops_default_provider: Select [OpenAI, Anthropic, Anthropic Compatible]
-ai_ops_default_model: Data
+ai_investigator_enabled: Check
+ai_investigator_default_provider: Select [OpenAI, Anthropic, Anthropic Compatible]
+ai_investigator_default_model: Data
 
-ai_ops_openai_api_key: Password
-ai_ops_openai_base_url: Data
-ai_ops_openai_default_model: Data
+ai_investigator_openai_api_key: Password
+ai_investigator_openai_base_url: Data
+ai_investigator_openai_default_model: Data
 
-ai_ops_anthropic_api_key: Password
-ai_ops_anthropic_base_url: Data
-ai_ops_anthropic_default_model: Data
-ai_ops_anthropic_default_opus_model: Data
-ai_ops_anthropic_default_sonnet_model: Data
-ai_ops_anthropic_default_haiku_model: Data
-ai_ops_anthropic_custom_headers_json: JSON
+ai_investigator_anthropic_api_key: Password
+ai_investigator_anthropic_base_url: Data
+ai_investigator_anthropic_default_model: Data
+ai_investigator_anthropic_default_opus_model: Data
+ai_investigator_anthropic_default_sonnet_model: Data
+ai_investigator_anthropic_default_haiku_model: Data
+ai_investigator_anthropic_custom_headers_json: JSON
 
-ai_ops_request_timeout_seconds: Int
-ai_ops_max_output_tokens: Int
+ai_investigator_request_timeout_seconds: Int
+ai_investigator_max_output_tokens: Int
 ```
 
-`ai_ops_anthropic_custom_headers_json` stores static headers attached to every Anthropic-compatible request. Do not put secrets in this JSON unless the field is encrypted; prefer password fields for secrets.
+`ai_investigator_anthropic_custom_headers_json` stores static headers attached to every Anthropic-compatible request. Do not put secrets in this JSON unless the field is encrypted; prefer password fields for secrets.
 
 ---
 
@@ -55,13 +55,13 @@ Stored in `Press Settings` as:
 
 ```json
 {
-  "ai_ops_default_provider": "Anthropic Compatible",
-  "ai_ops_default_model": "opus",
-  "ai_ops_anthropic_base_url": "http://15.206.91.192:8080",
-  "ai_ops_anthropic_default_opus_model": "qwen3.6-27b-fp8",
-  "ai_ops_anthropic_default_sonnet_model": "qwen3.6-27b-fp8",
-  "ai_ops_anthropic_default_haiku_model": "qwen3.6-27b-fp8",
-  "ai_ops_anthropic_custom_headers_json": {
+  "ai_investigator_default_provider": "Anthropic Compatible",
+  "ai_investigator_default_model": "opus",
+  "ai_investigator_anthropic_base_url": "http://15.206.91.192:8080",
+  "ai_investigator_anthropic_default_opus_model": "qwen3.6-27b-fp8",
+  "ai_investigator_anthropic_default_sonnet_model": "qwen3.6-27b-fp8",
+  "ai_investigator_anthropic_default_haiku_model": "qwen3.6-27b-fp8",
+  "ai_investigator_anthropic_custom_headers_json": {
     "X-Provider": "qwen"
   }
 }
@@ -84,8 +84,8 @@ def get_client():
 Resolution rules:
 - `OpenAI` uses OpenAI API-compatible client settings.
 - `Anthropic` uses Anthropic API settings.
-- `Anthropic Compatible` uses Anthropic request shape with custom `ai_ops_anthropic_base_url`, model aliases, and custom headers.
-- `ai_ops_default_model = opus|sonnet|haiku` resolves through Anthropic model alias fields.
+- `Anthropic Compatible` uses Anthropic request shape with custom `ai_investigator_anthropic_base_url`, model aliases, and custom headers.
+- `ai_investigator_default_model = opus|sonnet|haiku` resolves through Anthropic model alias fields.
 - explicit non-alias model names are passed through as-is.
 - custom headers are merged into every provider request after redaction/audit filtering.
 

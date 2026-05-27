@@ -8,48 +8,31 @@ import frappe
 
 
 def get_client():
+	"""Return an Anthropic client configured from Press Settings."""
+	try:
+		import anthropic
+	except ImportError as e:
+		frappe.throw("anthropic package not installed. Run: pip install anthropic", exc=e)
+
 	settings = frappe.get_single("Press Settings")
-	provider = settings.get("ai_ops_default_provider") or "Anthropic"
+	custom_headers = {}
+	with contextlib.suppress(json.JSONDecodeError):
+		custom_headers = json.loads(settings.get("ai_investigator_anthropic_custom_headers_json") or "{}")
 
-	if provider == "OpenAI":
-		try:
-			import openai
-		except ImportError as e:
-			frappe.throw("openai package not installed. Run: pip install openai", exc=e)
+	return anthropic.Anthropic(
+		api_key=settings.get_password("ai_investigator_anthropic_api_key") or "",
+		base_url=settings.get("ai_investigator_anthropic_base_url") or None,
+		default_headers=custom_headers or None,
+	)
 
-		return openai.OpenAI(
-			api_key=settings.get_password("ai_ops_openai_api_key") or "",
-			base_url=settings.get("ai_ops_openai_base_url") or None,
-		)
 
-	if provider in ("Anthropic", "Anthropic Compatible"):
-		try:
-			import anthropic
-		except ImportError as e:
-			frappe.throw("anthropic package not installed. Run: pip install anthropic", exc=e)
-
-		default_model = settings.get("ai_ops_default_model") or ""
-
-		model_map = {
-			"opus": "ai_ops_anthropic_default_opus_model",
-			"sonnet": "ai_ops_anthropic_default_sonnet_model",
-			"haiku": "ai_ops_anthropic_default_haiku_model",
-		}
-
-		model_field = model_map.get(default_model)
-		custom_headers = {}
-
-		with contextlib.suppress(json.JSONDecodeError):
-			custom_headers = json.loads(settings.get("ai_ops_anthropic_custom_headers_json") or "{}")
-
-		client = anthropic.Anthropic(
-			api_key=settings.get_password("ai_ops_anthropic_api_key") or "",
-			base_url=settings.get("ai_ops_anthropic_base_url") or None,
-			default_headers=custom_headers or None,
-		)
-
-		client.default_model = settings.get(model_field) if model_field else default_model
-		return client
-
-	frappe.throw(f"Unknown AI Ops provider: {provider}")
-	return None
+def get_model(tier: str = "sonnet") -> str:
+	"""Return the configured model ID for a given tier (opus/sonnet/haiku)."""
+	settings = frappe.get_single("Press Settings")
+	field_map = {
+		"opus": "ai_investigator_anthropic_default_opus_model",
+		"sonnet": "ai_investigator_anthropic_default_sonnet_model",
+		"haiku": "ai_investigator_anthropic_default_haiku_model",
+	}
+	field = field_map.get(tier, "ai_investigator_anthropic_default_sonnet_model")
+	return settings.get(field) or f"claude-{tier}-4-5"
