@@ -22,14 +22,14 @@ def classify_intent(query: str, incident=None) -> str:
 
 	Uses keyword matching; falls back to general_question for ambiguous input.
 	"""
-	if incident is not None:
-		return "incident_rca"
-
 	lowered = query.lower() if query else ""
 
 	for intent, keywords in _KEYWORD_MAP.items():
 		for keyword in keywords:
 			if re.search(re.escape(keyword), lowered):
 				return intent
+
+	if incident is not None:
+		return "incident_rca"
 
 	return "general_question"

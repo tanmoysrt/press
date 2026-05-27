@@ -3,10 +3,24 @@
 
 from __future__ import annotations
 
+import json
+
 import frappe
 
 from press.ai_investigator import llm
 from press.ai_investigator.investigation import evidence
+
+
+def _parse_data_json(value) -> dict:
+	"""Parse data_json field — frappe.get_all returns JSON strings, get_doc returns dicts."""
+	if not value:
+		return {}
+	if isinstance(value, dict):
+		return value
+	try:
+		return json.loads(value)
+	except (json.JSONDecodeError, TypeError):
+		return {}
 
 
 def finalize_rca(investigation_name: str) -> str:
@@ -26,7 +40,7 @@ def finalize_rca(investigation_name: str) -> str:
 	primary_hyp = _pick_primary_hypothesis(hypotheses)
 
 	primary_cause = primary_hyp["title"] if primary_hyp else "Unknown"
-	confidence = primary_hyp["data_json"].get("confidence", 0.0) if primary_hyp else 0.0
+	confidence = _parse_data_json(primary_hyp["data_json"]).get("confidence", 0.0) if primary_hyp else 0.0
 
 	summary = _llm_summarize(doc, findings, primary_cause, confidence)
 	follow_ups = _build_follow_ups(doc, hypotheses)
@@ -80,7 +94,7 @@ def _pick_primary_hypothesis(hypotheses: list[dict]) -> dict | None:
 	"""Return the hypothesis with the highest confidence."""
 	if not hypotheses:
 		return None
-	return max(hypotheses, key=lambda h: (h.get("data_json") or {}).get("confidence", 0.0))
+	return max(hypotheses, key=lambda h: _parse_data_json(h.get("data_json")).get("confidence", 0.0))
 
 
 def _llm_summarize(doc, findings: list[dict], primary_cause: str, confidence: float) -> str:
@@ -116,7 +130,7 @@ def _build_follow_ups(doc, hypotheses: list[dict]) -> list[str]:
 	state = doc.state_json or {}
 	follow_ups: list[str] = list(state.get("recommended_next_checks", []))
 	for hyp in hypotheses:
-		conf = (hyp.get("data_json") or {}).get("confidence", 1.0)
+		conf = _parse_data_json(hyp.get("data_json")).get("confidence", 1.0)
 		if conf < 0.5:
 			follow_ups.append(f"Investigate unconfirmed hypothesis: {hyp['title']}")
 	return follow_ups

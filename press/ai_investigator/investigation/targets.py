@@ -46,6 +46,9 @@ def _resolve_from_explicit(target_doctype: str, target_name: str) -> dict:
 		related = _related_from_server(target_name)
 	elif target_doctype == "Bench":
 		related = _related_from_bench(target_name)
+	elif target_doctype == "Database Server":
+		cluster = frappe.db.get_value("Database Server", target_name, "cluster")
+		related = {"cluster": cluster} if cluster else {}
 	return {"target_doctype": target_doctype, "target_name": target_name, "related": related}
 
 
@@ -63,21 +66,18 @@ def resolve(
 		return _resolve_from_explicit(target_doctype, target_name)
 
 	if incident is not None:
-		server = incident.get("server") or incident.get("name")
-		if server:
-			return {
-				"target_doctype": "Server",
-				"target_name": server,
-				"related": _related_from_server(server),
-			}
+		resource_type = incident.get("resource_type")
+		resource = incident.get("resource")
+		if resource_type and resource and frappe.db.exists(resource_type, resource):
+			return _resolve_from_explicit(resource_type, resource)
+
+		server = incident.get("server")
+		if server and frappe.db.exists("Server", server):
+			return _resolve_from_explicit("Server", server)
 
 	if query:
 		site_name = _extract_site_from_query(query)
 		if site_name and frappe.db.exists("Site", site_name):
-			return {
-				"target_doctype": "Site",
-				"target_name": site_name,
-				"related": _related_from_site(site_name),
-			}
+			return _resolve_from_explicit("Site", site_name)
 
 	return {"target_doctype": None, "target_name": None, "related": {}}

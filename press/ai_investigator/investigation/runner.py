@@ -80,14 +80,22 @@ def start_investigation(
 	doc.insert(ignore_permissions=True)
 	frappe.db.commit()
 
-	job = frappe.enqueue(
-		"press.ai_investigator.investigation.runner.run_first_pass",
-		investigation_name=doc.name,
-		queue="long",
-		timeout=600,
-	)
-	doc.db_set("background_job_id", job.id if hasattr(job, "id") else "", update_modified=False)
-	frappe.db.commit()
+	if query:
+		evidence.append_log(doc.name, "message", "User", query)
+	elif incident_name:
+		evidence.append_log(doc.name, "message", "User", f"Investigate incident {incident_name}")
+
+	if frappe.flags.in_test or frappe.conf.get("developer_mode"):
+		run_first_pass(doc.name)
+	else:
+		job = frappe.enqueue(
+			"press.ai_investigator.investigation.runner.run_first_pass",
+			investigation_name=doc.name,
+			queue="long",
+			timeout=600,
+		)
+		doc.db_set("background_job_id", job.id if hasattr(job, "id") else "", update_modified=False)
+		frappe.db.commit()
 
 	return doc.name
 
@@ -133,10 +141,13 @@ def _execute_first_pass(doc) -> None:
 	state["current_hypotheses"] = hypotheses
 	final_status = "Completed" if confidence >= 0.4 else "Needs Human"
 
+	summary_text = _generate_ai_response(state.get("query") or doc.title, intent, target, findings)
+	evidence.append_log(doc.name, "message", "Assistant", summary_text)
+
 	doc.db_set("status", final_status, update_modified=True)
 	doc.db_set("completed_at", datetime.now(), update_modified=False)
 	doc.db_set("last_run_at", datetime.now(), update_modified=False)
-	doc.db_set("summary", _build_summary(intent, target, findings), update_modified=False)
+	doc.db_set("summary", summary_text, update_modified=False)
 	doc.db_set("primary_cause", primary_cause or "", update_modified=False)
 	doc.db_set("confidence", confidence, update_modified=False)
 	doc.db_set("state_json", json.dumps(state), update_modified=False)
@@ -150,7 +161,7 @@ def _fetch_incident_doc(incident_name: str | None) -> dict | None:
 	return frappe.db.get_value(
 		"Incident",
 		incident_name,
-		["name", "server", "cluster", "status", "type", "subject"],
+		["name", "server", "cluster", "status", "type", "subject", "resource_type", "resource"],
 		as_dict=True,
 	)
 
@@ -387,6 +398,58 @@ def _determine_primary_cause(hypotheses: list[dict], findings: list[dict]) -> tu
 	return (best["title"], best.get("confidence", 0.0))
 
 
+def _generate_ai_response(query: str, intent: str, target: dict, findings: list[dict]) -> str:
+	"""Call LLM to analyse tool findings; fallback to a plain summary on error."""
+	try:
+		from press.ai_investigator import llm as llm_module
+
+		client = llm_module.get_client()
+		model = llm_module.get_model("haiku")
+		target_desc = (
+			f"{target.get('target_doctype')} **{target.get('target_name')}**"
+			if target.get("target_name")
+			else "no specific resource identified in the query"
+		)
+		findings_text = (
+			"\n".join(f"- {f['text']}" for f in findings) if findings else "No issues detected by tools."
+		)
+		prompt = (
+			f'User query: "{query}"\nIntent: {intent}\nTarget: {target_desc}\n\n'
+			f"Tool findings:\n{findings_text}\n\n"
+			"Reply in 3-5 sentences: what was checked, what was found, and what to do next. "
+			"Be direct and technical. "
+			"If no target resource was identified, ask the user to specify the site or server name."
+		)
+		msg = client.messages.create(
+			model=model, max_tokens=400, messages=[{"role": "user", "content": prompt}]
+		)
+		return msg.content[0].text.strip()
+	except Exception:
+		return _build_summary(intent, target, findings)
+
+
+def _generate_continuation_response(instruction: str, new_findings: list[dict]) -> str:
+	"""Call LLM to generate a follow-up response; fallback to plain summary on error."""
+	try:
+		from press.ai_investigator import llm as llm_module
+
+		client = llm_module.get_client()
+		model = llm_module.get_model("haiku")
+		findings_text = (
+			"\n".join(f"- {f['text']}" for f in new_findings) if new_findings else "No new findings."
+		)
+		prompt = (
+			f'User instruction: "{instruction}"\n\nNew findings:\n{findings_text}\n\n'
+			"Reply in 2-4 sentences summarising what was found and recommended next steps. Be direct."
+		)
+		msg = client.messages.create(
+			model=model, max_tokens=300, messages=[{"role": "user", "content": prompt}]
+		)
+		return msg.content[0].text.strip()
+	except Exception:
+		return _build_continuation_response(new_findings, instruction)
+
+
 def _build_summary(intent: str, target: dict, findings: list[dict]) -> str:
 	"""Build a short human-readable summary of the investigation."""
 	target_desc = ""
@@ -446,7 +509,12 @@ def continue_investigation(investigation_name: str, instruction: str) -> dict:
 	state: dict = json.loads(doc.state_json) if isinstance(doc.state_json, str) else (doc.state_json or {})
 	_merge_hypotheses(doc, new_findings, state.get("intent", "general"))
 
-	response_text = _build_continuation_response(new_findings, instruction)
+	state = json.loads(doc.state_json) if isinstance(doc.state_json, str) else (doc.state_json or {})
+	primary_cause, confidence = _determine_primary_cause(state.get("current_hypotheses", []), new_findings)
+	doc.db_set("primary_cause", primary_cause or "", update_modified=False)
+	doc.db_set("confidence", confidence, update_modified=False)
+
+	response_text = _generate_continuation_response(instruction, new_findings)
 	evidence.append_log(investigation_name, "message", "Assistant", response_text)
 
 	if doc.status == "Needs Human" and new_findings:
@@ -509,9 +577,11 @@ def _merge_hypotheses(doc, new_findings: list[dict], intent: str) -> None:
 			idx = existing_titles[hyp["title"]]
 			boosted = min(existing[idx].get("confidence", 0.5) + 0.1, 0.95)
 			existing[idx]["confidence"] = boosted
+			evidence.log_hypothesis(doc.name, hyp["title"], boosted, existing[idx]["evidence"])
 		else:
 			existing.append(hyp)
 			existing_titles[hyp["title"]] = len(existing) - 1
+			evidence.log_hypothesis(doc.name, hyp["title"], hyp["confidence"], hyp["evidence"])
 
 	state["current_hypotheses"] = existing
 	doc.db_set("state_json", json.dumps(state), update_modified=False)

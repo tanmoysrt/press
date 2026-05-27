@@ -1,19 +1,34 @@
 <script setup>
 import {
+	Badge,
 	Button,
 	createDocumentResource,
 	createListResource,
 	createResource,
 	Dialog,
 	ErrorMessage,
-	Input,
-	Spinner,
+	LoadingIndicator,
+	Textarea,
+	TextInput,
 } from 'frappe-ui'
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 
 const router = useRouter()
 const route = useRoute()
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function parseJson(value) {
+	if (!value) return {}
+	if (typeof value === 'object') return value
+	try {
+		return JSON.parse(value)
+	} catch {
+		return {}
+	}
+}
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
@@ -53,17 +68,18 @@ const groupedInvestigations = computed(() =>
 	groupByDate(filteredInvestigations.value),
 )
 
-function statusDot(status) {
-	const map = {
-		Running: { char: '●', cls: 'text-blue-500' },
-		Queued: { char: '●', cls: 'text-blue-300' },
-		Completed: { char: '○', cls: 'text-ink-gray-4' },
-		Failed: { char: '✕', cls: 'text-red-500' },
-		'Needs Human': { char: '△', cls: 'text-yellow-500' },
-		'Action Recommended': { char: '△', cls: 'text-yellow-400' },
-		'Action Taken': { char: '○', cls: 'text-green-500' },
-	}
-	return map[status] || { char: '○', cls: 'text-ink-gray-4' }
+const STATUS_BADGE = {
+	Running: { label: 'Running', theme: 'blue' },
+	Queued: { label: 'Queued', theme: 'blue' },
+	Completed: { label: 'Completed', theme: 'green' },
+	Failed: { label: 'Failed', theme: 'red' },
+	'Needs Human': { label: 'Needs Human', theme: 'yellow' },
+	'Action Recommended': { label: 'Action Recommended', theme: 'yellow' },
+	'Action Taken': { label: 'Action Taken', theme: 'green' },
+}
+
+function statusBadge(status) {
+	return STATUS_BADGE[status] || { label: status || 'Unknown', theme: 'gray' }
 }
 
 // ── Current investigation ─────────────────────────────────────────────────────
@@ -95,7 +111,8 @@ function startPolling() {
 	stopPolling()
 	pollInterval = setInterval(() => {
 		const status = investigation.doc?.status
-		if (status === 'Running' || status === 'Queued') {
+		// Keep polling while running/queued, or while doc hasn't loaded yet
+		if (!investigation.doc || status === 'Running' || status === 'Queued') {
 			investigation.reload()
 			logs.reload()
 		} else {
@@ -117,7 +134,7 @@ watch(
 	(name) => {
 		if (name) {
 			investigation.name = name
-			logs.filters = { investigation: name }
+			logs.update({ filters: { investigation: name } })
 			investigation.reload()
 			logs.reload()
 			startPolling()
@@ -132,7 +149,7 @@ watch(
 	() => investigation.doc?.status,
 	(status) => {
 		if (status === 'Running' || status === 'Queued') startPolling()
-		else stopPolling()
+		else if (status) stopPolling()
 	},
 )
 
@@ -140,25 +157,35 @@ onUnmounted(stopPolling)
 
 // ── Chat thread ───────────────────────────────────────────────────────────────
 
+const chatEnd = ref(null)
 const expandedTools = ref(new Set())
 
 function toggleTool(logName) {
-	if (expandedTools.value.has(logName)) expandedTools.value.delete(logName)
-	else expandedTools.value.add(logName)
+	const s = new Set(expandedTools.value)
+	if (s.has(logName)) s.delete(logName)
+	else s.add(logName)
+	expandedTools.value = s
 }
 
-const chatMessages = computed(() => {
-	return (logs.data || []).filter((l) =>
-		[
-			'message',
-			'finding',
-			'tool_call',
-			'hypothesis',
-			'action_plan',
-			'action_result',
-			'rca',
-		].includes(l.type),
-	)
+const LOG_TYPES = [
+	'message',
+	'finding',
+	'tool_call',
+	'hypothesis',
+	'action_plan',
+	'action_result',
+	'rca',
+	'error',
+]
+
+const chatMessages = computed(() =>
+	(logs.data || [])
+		.filter((l) => LOG_TYPES.includes(l.type))
+		.map((l) => ({ ...l, data: parseJson(l.data_json) })),
+)
+
+watch(chatMessages, () => {
+	nextTick(() => chatEnd.value?.scrollIntoView({ behavior: 'smooth' }))
 })
 
 // ── Composer ──────────────────────────────────────────────────────────────────
@@ -167,25 +194,33 @@ const composer = ref('')
 const isRunning = computed(
 	() =>
 		investigation.doc?.status === 'Running' ||
-		investigation.doc?.status === 'Queued',
+		investigation.doc?.status === 'Queued' ||
+		continueInv.loading,
 )
 
 const startInv = createResource({
 	url: 'press.api.ai_investigator.start_investigation',
+	method: 'POST',
 })
 const continueInv = createResource({
 	url: 'press.api.ai_investigator.continue_investigation',
+	method: 'POST',
 })
 const finalizeRca = createResource({
 	url: 'press.api.ai_investigator.finalize_rca',
+	method: 'POST',
 })
 
 async function send() {
 	const text = composer.value.trim()
-	if (!text) return
+	if (!text || isRunning.value) return
 	composer.value = ''
 	if (!investigationName.value) {
 		await startInv.submit({ query: text })
+		if (startInv.error) {
+			toast.error(startInv.error)
+			return
+		}
 		if (startInv.data) {
 			router.push({ name: 'AI Investigation', params: { name: startInv.data } })
 		}
@@ -194,12 +229,21 @@ async function send() {
 			investigation_name: investigationName.value,
 			instruction: text,
 		})
+		if (continueInv.error) {
+			toast.error(continueInv.error)
+			return
+		}
+		if (continueInv.data?.action_id && continueInv.data?.approval_token) {
+			actionTokens.value[continueInv.data.action_id] =
+				continueInv.data.approval_token
+		}
 		logs.reload()
 		investigation.reload()
+		startPolling()
 	}
 }
 
-function handleKey(e) {
+function handleComposerKey(e) {
 	if (e.key === 'Enter' && !e.shiftKey) {
 		e.preventDefault()
 		send()
@@ -208,401 +252,543 @@ function handleKey(e) {
 
 async function generateRca() {
 	await finalizeRca.submit({ investigation_name: investigationName.value })
+	if (finalizeRca.error) {
+		toast.error(finalizeRca.error)
+		return
+	}
 	logs.reload()
 }
 
 // ── Suggestion chips ──────────────────────────────────────────────────────────
 
 const suggestions = [
-	{ label: 'Investigate an incident', text: 'Investigate incident ' },
-	{ label: 'Check a site', text: 'Check site performance for ' },
-	{ label: 'Check a server', text: 'Check server performance for ' },
+	{ label: 'Investigate incident', text: 'Investigate incident ' },
+	{ label: 'Check site', text: 'Check site performance for ' },
+	{ label: 'Check server', text: 'Check server performance for ' },
 	{ label: 'Why was X slow?', text: 'Why was ' },
 ]
-
-function useSuggestion(text) {
-	composer.value = text
-}
 
 // ── Action plan approval ──────────────────────────────────────────────────────
 
 const showApproveModal = ref(false)
 const pendingAction = ref(null)
-const storedToken = ref('')
 const actionTokens = ref({})
 
 const executeAction = createResource({
 	url: 'press.api.ai_investigator.execute_action_plan',
+	method: 'POST',
 })
 
-watch(
-	() => continueInv.data,
-	(result) => {
-		if (result?.action_id && result?.approval_token) {
-			actionTokens.value[result.action_id] = result.approval_token
-		}
-	},
-)
-
 function openApproveModal(log) {
-	const data = log.data_json || {}
-	pendingAction.value = { log, data }
-	storedToken.value = actionTokens.value[log.name] || ''
+	pendingAction.value = log
 	showApproveModal.value = true
 }
 
 async function confirmApprove() {
 	if (!pendingAction.value) return
-	const { log } = pendingAction.value
+	const log = pendingAction.value
+	const token = actionTokens.value[log.name] || ''
+	if (!token) {
+		toast.error(
+			'Approval token not found. Re-run the investigation to get a new token.',
+		)
+		return
+	}
 	await executeAction.submit({
 		investigation_name: investigationName.value,
 		action_id: log.name,
-		approval_token: storedToken.value,
+		approval_token: token,
 	})
+	if (executeAction.error) {
+		toast.error(executeAction.error)
+		return
+	}
 	showApproveModal.value = false
 	pendingAction.value = null
-	storedToken.value = ''
+	delete actionTokens.value[log.name]
 	logs.reload()
 	investigation.reload()
 }
 </script>
 
 <template>
-	<div class="flex h-screen overflow-hidden">
-		<!-- Left sidebar -->
+	<div class="flex h-full overflow-hidden">
+		<!-- Sidebar -->
 		<div
-			class="flex w-60 flex-shrink-0 flex-col border-r border-outline-gray-2 bg-surface-white"
+			class="flex w-56 flex-shrink-0 flex-col border-r border-outline-gray-2 bg-surface-white"
 		>
-			<div class="flex items-center justify-between px-3 py-3">
+			<!-- Sidebar header -->
+			<div class="flex items-center justify-between px-3 py-2.5">
 				<span class="text-sm font-semibold text-ink-gray-9">AI Ops</span>
-				<Button size="sm" variant="ghost" :route="{ name: 'AI Investigator' }">
-					<template #prefix><LucidePlus class="size-4" /></template>
+				<Button
+					variant="ghost"
+					size="sm"
+					:route="{ name: 'AI Investigator' }"
+					label="New"
+				>
+					<template #icon>
+						<LucidePlus class="size-4" />
+					</template>
 				</Button>
 			</div>
+
+			<!-- Search -->
 			<div class="px-2 pb-2">
-				<Input v-model="searchQuery" size="sm" placeholder="Search..." />
+				<TextInput
+					v-model="searchQuery"
+					size="sm"
+					placeholder="Search..."
+					:debounce="200"
+				/>
 			</div>
+
+			<!-- List -->
 			<div class="flex-1 overflow-y-auto">
-				<Spinner
+				<LoadingIndicator
 					v-if="investigations.loading && !investigations.data"
-					class="mx-auto mt-6 h-5"
+					class="mx-auto mt-6 h-5 w-5"
 				/>
 				<template v-for="(items, group) in groupedInvestigations" :key="group">
 					<div
 						v-if="items.length"
-						class="px-3 pb-1 pt-3 text-xs font-medium text-ink-gray-4"
+						class="px-3 pb-0.5 pt-2.5 text-xs font-medium text-ink-gray-4"
 					>
 						{{ group }}
 					</div>
-					<button
+					<div
 						v-for="item in items"
 						:key="item.name"
-						class="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left hover:bg-surface-gray-1"
-						:class="{
-							'bg-surface-gray-2': item.name === investigationName,
-						}"
-						@click="
-							router.push({
-								name: 'AI Investigation',
-								params: { name: item.name },
-							})
-						"
+						class="mx-1 flex cursor-pointer items-start gap-2 rounded px-2 py-1.5 hover:bg-surface-gray-2"
+						:class="{ 'bg-surface-gray-2': item.name === investigationName }"
+						@click="router.push({ name: 'AI Investigation', params: { name: item.name } })"
 					>
-						<span
-							:class="statusDot(item.status).cls"
-							class="text-xs leading-none"
-							>{{ statusDot(item.status).char }}</span
-						>
-						<span class="truncate text-sm text-ink-gray-7"
+						<span class="mt-0.5 flex-shrink-0">
+							<span
+								class="inline-block size-2 rounded-full"
+								:class="{
+									'bg-blue-500': item.status === 'Running' || item.status === 'Queued',
+									'bg-green-500': item.status === 'Completed' || item.status === 'Action Taken',
+									'bg-red-500': item.status === 'Failed',
+									'bg-yellow-500':
+										item.status === 'Needs Human' || item.status === 'Action Recommended',
+									'bg-ink-gray-3': !item.status,
+								}"
+							/>
+						</span>
+						<span class="truncate text-sm text-ink-gray-8"
 							>{{ item.title }}</span
 						>
-					</button>
+					</div>
 				</template>
+				<div
+					v-if="!investigations.loading && !filteredInvestigations.length"
+					class="px-4 py-6 text-center text-sm text-ink-gray-4"
+				>
+					No investigations
+				</div>
 			</div>
 		</div>
 
 		<!-- Chat panel -->
-		<div class="flex flex-1 flex-col overflow-hidden">
+		<div class="flex flex-1 flex-col overflow-hidden bg-surface-white">
 			<!-- Thread header -->
 			<div
-				v-if="investigation.doc"
-				class="flex items-center justify-between border-b border-outline-gray-2 px-5 py-3"
+				v-if="investigationName"
+				class="flex flex-shrink-0 items-center justify-between border-b border-outline-gray-2 px-5 py-3"
 			>
-				<span class="font-medium text-ink-gray-9"
-					>{{ investigation.doc.title }}</span
-				>
-				<span
-					v-if="isRunning"
-					class="flex items-center gap-1.5 text-sm text-blue-500"
-				>
-					<LucideLoader class="size-4 animate-spin" />
-					Running...
-				</span>
-			</div>
-
-			<!-- Messages area -->
-			<div class="flex-1 space-y-4 overflow-y-auto px-6 py-4">
-				<!-- Empty state -->
-				<template v-if="!investigationName">
-					<div
-						class="flex h-full flex-col items-center justify-center gap-6 text-center"
-					>
-						<div>
-							<LucideBotMessageSquare
-								class="mx-auto mb-3 size-10 text-ink-gray-4"
-							/>
-							<h2 class="text-lg font-semibold text-ink-gray-9">
-								FC AI Assistant
-							</h2>
-							<p class="text-sm text-ink-gray-5">System Manager only</p>
-						</div>
-						<p class="text-ink-gray-6">What do you want to investigate?</p>
-						<div class="flex flex-wrap justify-center gap-2">
-							<Button
-								v-for="s in suggestions"
-								:key="s.label"
-								variant="outline"
-								size="sm"
-								@click="useSuggestion(s.text)"
-								>{{ s.label }}</Button
-							>
-						</div>
-					</div>
-				</template>
-
-				<!-- Chat messages -->
-				<template v-else>
-					<Spinner
-						v-if="logs.loading && !logs.data"
-						class="mx-auto mt-10 h-6"
+				<div class="flex items-center gap-3 overflow-hidden">
+					<span class="truncate font-medium text-ink-gray-9">
+						{{ investigation.doc?.title || investigationName }}
+					</span>
+					<Badge
+						v-if="investigation.doc?.status"
+						:label="statusBadge(investigation.doc.status).label"
+						:theme="statusBadge(investigation.doc.status).theme"
+						size="sm"
 					/>
-
-					<template v-for="log in chatMessages" :key="log.name">
-						<!-- User message -->
-						<div
-							v-if="log.type === 'message' && log.title === 'User'"
-							class="flex justify-end"
-						>
-							<div
-								class="max-w-lg rounded-lg bg-surface-gray-2 px-4 py-2 text-sm text-ink-gray-9"
-							>
-								{{ log.content }}
-							</div>
-						</div>
-
-						<!-- Assistant message -->
-						<div
-							v-else-if="
-								log.type === 'message' && log.title === 'Assistant'
-							"
-							class="flex gap-3"
-						>
-							<LucideBotMessageSquare
-								class="mt-0.5 size-5 flex-shrink-0 text-ink-gray-5"
-							/>
-							<div class="whitespace-pre-wrap text-sm text-ink-gray-9">
-								{{ log.content }}
-							</div>
-						</div>
-
-						<!-- Tool call row -->
-						<div v-else-if="log.type === 'tool_call'" class="ml-8">
-							<button
-								class="flex items-center gap-2 text-xs text-ink-gray-5 hover:text-ink-gray-7"
-								@click="toggleTool(log.name)"
-							>
-								<component
-									:is="
-										expandedTools.has(log.name)
-											? LucideChevronDown
-											: LucideChevronRight
-									"
-									class="size-3"
-								/>
-								<span class="font-mono">{{ log.title }}</span>
-								<LucideCheck
-									v-if="log.data_json?.status === 'success'"
-									class="size-3 text-green-500"
-								/>
-								<span v-if="log.data_json?.duration_ms" class="text-ink-gray-4"
-									>{{ log.data_json.duration_ms }}ms</span
-								>
-							</button>
-							<div
-								v-if="expandedTools.has(log.name)"
-								class="mt-1 rounded border border-outline-gray-2 bg-surface-gray-1 p-3 text-xs text-ink-gray-7"
-							>
-								<div class="mb-1 text-ink-gray-5">
-									{{ JSON.stringify(log.data_json?.input || {}) }}
-								</div>
-								<hr class="my-1 border-outline-gray-2" />
-								<div>{{ log.data_json?.output_summary }}</div>
-							</div>
-						</div>
-
-						<!-- Finding -->
-						<div
-							v-else-if="log.type === 'finding'"
-							class="ml-8 text-xs italic text-ink-gray-6"
-						>
-							{{ log.title }}
-						</div>
-
-						<!-- Action plan card -->
-						<div v-else-if="log.type === 'action_plan'" class="ml-8">
-							<div class="rounded-lg border border-outline-gray-2 p-4 text-sm">
-								<div class="font-medium text-ink-gray-9">
-									Action: {{ log.data_json?.action }}
-									{{ log.data_json?.target_name }}
-								</div>
-								<div class="mt-1 text-ink-gray-6">
-									Reason: {{ log.data_json?.reason }}
-								</div>
-								<div class="text-ink-gray-6">
-									Impact: {{ log.data_json?.expected_impact }}
-								</div>
-								<div class="mt-1 text-xs text-ink-gray-4">
-									Expires: {{ log.data_json?.expires_at }}
-								</div>
-								<div
-									v-if="log.data_json?.status === 'pending_approval'"
-									class="mt-3 flex justify-end"
-								>
-									<Button
-										size="sm"
-										variant="solid"
-										theme="blue"
-										@click="openApproveModal(log)"
-										>Approve</Button
-									>
-								</div>
-								<div
-									v-else
-									class="mt-2 text-xs font-medium"
-									:class="
-										log.data_json?.status === 'executed'
-											? 'text-green-600'
-											: 'text-ink-gray-5'
-									"
-								>
-									{{ log.data_json?.status }}
-								</div>
-							</div>
-						</div>
-
-						<!-- RCA block -->
-						<div v-else-if="log.type === 'rca'" class="ml-2">
-							<div class="rounded-lg border border-outline-gray-2 p-4">
-								<div
-									class="prose prose-sm max-w-none whitespace-pre-wrap text-ink-gray-9"
-								>
-									{{ log.content }}
-								</div>
-								<div class="mt-3 flex gap-2">
-									<Button
-										size="sm"
-										variant="outline"
-										@click="navigator.clipboard.writeText(log.content)"
-										>Copy RCA</Button
-									>
-								</div>
-							</div>
-						</div>
-					</template>
-
-					<!-- Summary card -->
-					<div
+				</div>
+				<div class="ml-4 flex items-center gap-2">
+					<LoadingIndicator v-if="isRunning" class="h-4 w-4 text-blue-500" />
+					<Button
 						v-if="
 							investigation.doc &&
 							!isRunning &&
-							investigation.doc.primary_cause
+							investigation.doc.primary_cause &&
+							!investigation.doc.rca_markdown
 						"
-						class="rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-4"
+						size="sm"
+						variant="outline"
+						:loading="finalizeRca.loading"
+						@click="generateRca"
 					>
-						<div
-							class="flex items-center gap-2 text-sm font-medium text-ink-gray-7"
+						Generate RCA
+					</Button>
+				</div>
+			</div>
+
+			<!-- Messages -->
+			<div class="flex-1 overflow-y-auto px-5 py-4">
+				<!-- Empty state — no investigation selected -->
+				<div
+					v-if="!investigationName"
+					class="flex h-full flex-col items-center justify-center gap-5 text-center"
+				>
+					<div>
+						<LucideBotMessageSquare
+							class="mx-auto mb-3 size-10 text-ink-gray-3"
+						/>
+						<h2 class="text-base font-semibold text-ink-gray-9">
+							AI Ops Investigator
+						</h2>
+						<p class="mt-1 text-sm text-ink-gray-5">System Manager only</p>
+					</div>
+					<p class="text-sm text-ink-gray-6">
+						What would you like to investigate?
+					</p>
+					<div class="flex flex-wrap justify-center gap-2">
+						<Button
+							v-for="s in suggestions"
+							:key="s.label"
+							variant="outline"
+							size="sm"
+							@click="composer = s.text"
 						>
-							<span>{{ investigation.doc.status }}</span>
-							<span v-if="investigation.doc.confidence" class="text-ink-gray-5">
-								·
-								{{ Math.round(investigation.doc.confidence * 100) }}% confident
-							</span>
-						</div>
-						<div class="mt-1 text-sm text-ink-gray-9">
-							Cause: {{ investigation.doc.primary_cause }}
-						</div>
-						<div class="mt-3 flex gap-2">
-							<Button
-								size="sm"
-								variant="outline"
-								:loading="finalizeRca.loading"
-								@click="generateRca"
+							{{ s.label }}
+						</Button>
+					</div>
+				</div>
+
+				<!-- Loading logs -->
+				<div
+					v-else-if="logs.loading && !logs.data"
+					class="flex h-full items-center justify-center"
+				>
+					<LoadingIndicator class="h-6 w-6 text-ink-gray-4" />
+				</div>
+
+				<!-- Chat messages -->
+				<template v-else>
+					<div class="space-y-4">
+						<template v-for="log in chatMessages" :key="log.name">
+							<!-- User message -->
+							<div
+								v-if="log.type === 'message' && log.title === 'User'"
+								class="flex justify-end"
 							>
-								Generate RCA
-							</Button>
+								<div
+									class="max-w-lg rounded-lg bg-surface-gray-2 px-4 py-2.5 text-sm text-ink-gray-9"
+								>
+									{{ log.content }}
+								</div>
+							</div>
+
+							<!-- Assistant message -->
+							<div
+								v-else-if="log.type === 'message' && log.title === 'Assistant'"
+								class="flex gap-3"
+							>
+								<div
+									class="flex size-7 flex-shrink-0 items-center justify-center rounded-full bg-surface-gray-2"
+								>
+									<LucideBotMessageSquare class="size-4 text-ink-gray-6" />
+								</div>
+								<div
+									class="whitespace-pre-wrap text-sm leading-relaxed text-ink-gray-9"
+								>
+									{{ log.content }}
+								</div>
+							</div>
+
+							<!-- Tool call -->
+							<div v-else-if="log.type === 'tool_call'" class="ml-10">
+								<button
+									class="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-ink-gray-5 hover:bg-surface-gray-1 hover:text-ink-gray-7"
+									@click="toggleTool(log.name)"
+								>
+									<component
+										:is="expandedTools.has(log.name) ? LucideChevronDown : LucideChevronRight"
+										class="size-3 flex-shrink-0"
+									/>
+									<span class="font-mono">{{ log.title }}</span>
+									<LucideCheck
+										v-if="log.data?.status === 'success'"
+										class="size-3 text-green-500"
+									/>
+									<span v-if="log.data?.duration_ms" class="text-ink-gray-4">
+										{{ log.data.duration_ms }}ms
+									</span>
+								</button>
+								<div
+									v-if="expandedTools.has(log.name)"
+									class="mt-1 ml-2 rounded-md border border-outline-gray-2 bg-surface-gray-1 p-3 text-xs"
+								>
+									<p class="mb-1 font-mono text-ink-gray-5">
+										{{ JSON.stringify(log.data?.input || {}) }}
+									</p>
+									<hr class="my-1.5 border-outline-gray-2" />
+									<p class="text-ink-gray-7">{{ log.data?.output_summary }}</p>
+								</div>
+							</div>
+
+							<!-- Finding -->
+							<div
+								v-else-if="log.type === 'finding'"
+								class="ml-10 flex items-start gap-2 text-sm text-ink-gray-6"
+							>
+								<LucideInfo
+									class="mt-0.5 size-3.5 flex-shrink-0 text-blue-400"
+								/>
+								{{ log.title }}
+							</div>
+
+							<!-- Hypothesis -->
+							<div
+								v-else-if="log.type === 'hypothesis'"
+								class="ml-10 flex items-start gap-2 text-sm text-ink-gray-6"
+							>
+								<LucideLightbulb
+									class="mt-0.5 size-3.5 flex-shrink-0 text-yellow-500"
+								/>
+								<span>
+									{{ log.title }}
+									<span
+										v-if="log.data?.confidence"
+										class="ml-1 text-xs text-ink-gray-4"
+									>
+										({{ Math.round(log.data.confidence * 100) }}%)
+									</span>
+								</span>
+							</div>
+
+							<!-- Action plan card -->
+							<div v-else-if="log.type === 'action_plan'" class="ml-10">
+								<div
+									class="rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-4 text-sm"
+								>
+									<div class="flex items-start justify-between gap-3">
+										<div>
+											<p class="font-medium text-ink-gray-9">
+												{{ log.data?.action }}
+												— {{ log.data?.target_name }}
+											</p>
+											<p class="mt-1 text-ink-gray-6">{{ log.data?.reason }}</p>
+											<p class="text-ink-gray-5">
+												Impact: {{ log.data?.expected_impact }}
+											</p>
+											<p class="mt-1 text-xs text-ink-gray-4">
+												Expires: {{ log.data?.expires_at }}
+											</p>
+										</div>
+										<div class="flex-shrink-0">
+											<Badge
+												v-if="log.data?.status !== 'pending_approval'"
+												:label="log.data?.status"
+												:theme="log.data?.status === 'executed' ? 'green' : 'gray'"
+												size="sm"
+											/>
+											<Button
+												v-else
+												size="sm"
+												variant="solid"
+												theme="red"
+												@click="openApproveModal(log)"
+											>
+												Approve
+											</Button>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<!-- Action result -->
+							<div
+								v-else-if="log.type === 'action_result'"
+								class="ml-10 flex items-start gap-2 text-sm text-green-700"
+							>
+								<LucideCheckCircle class="mt-0.5 size-3.5 flex-shrink-0" />
+								{{ log.title }}
+							</div>
+
+							<!-- Error -->
+							<div
+								v-else-if="log.type === 'error'"
+								class="ml-10 flex items-start gap-2 text-sm text-red-600"
+							>
+								<LucideAlertCircle class="mt-0.5 size-3.5 flex-shrink-0" />
+								<span
+									>{{ log.title }}
+									<span v-if="log.content">: {{ log.content }}</span></span
+								>
+							</div>
+
+							<!-- RCA -->
+							<div v-else-if="log.type === 'rca'">
+								<div class="rounded-lg border border-outline-gray-2 p-5">
+									<div class="mb-3 flex items-center justify-between">
+										<span class="text-sm font-semibold text-ink-gray-9"
+											>Root Cause Analysis</span
+										>
+										<Button
+											size="sm"
+											variant="ghost"
+											@click="navigator.clipboard.writeText(log.content)"
+										>
+											<template #icon>
+												<LucideCopy class="size-3.5" />
+											</template>
+										</Button>
+									</div>
+									<div
+										class="whitespace-pre-wrap text-sm leading-relaxed text-ink-gray-8"
+									>
+										{{ log.content }}
+									</div>
+								</div>
+							</div>
+						</template>
+
+						<!-- Summary card (shown after completion if RCA not generated yet) -->
+						<div
+							v-if="
+								investigation.doc &&
+								!isRunning &&
+								investigation.doc.primary_cause &&
+								!investigation.doc.rca_markdown
+							"
+							class="rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-4"
+						>
+							<div class="flex items-center gap-2">
+								<LucideAlertCircle class="size-4 text-yellow-500" />
+								<span class="text-sm font-medium text-ink-gray-7">
+									{{ investigation.doc.status }}
+									<span
+										v-if="investigation.doc.confidence"
+										class="font-normal text-ink-gray-5"
+									>
+										· {{ Math.round(investigation.doc.confidence * 100) }}%
+										confident
+									</span>
+								</span>
+							</div>
+							<p class="mt-1 text-sm text-ink-gray-9">
+								{{ investigation.doc.primary_cause }}
+							</p>
+						</div>
+
+						<!-- Typing indicator while running -->
+						<div v-if="isRunning" class="flex items-center gap-3">
+							<div
+								class="flex size-7 items-center justify-center rounded-full bg-surface-gray-2"
+							>
+								<LucideBotMessageSquare class="size-4 text-ink-gray-6" />
+							</div>
+							<div class="flex gap-1">
+								<span
+									class="size-1.5 animate-bounce rounded-full bg-ink-gray-4 [animation-delay:0ms]"
+								/>
+								<span
+									class="size-1.5 animate-bounce rounded-full bg-ink-gray-4 [animation-delay:150ms]"
+								/>
+								<span
+									class="size-1.5 animate-bounce rounded-full bg-ink-gray-4 [animation-delay:300ms]"
+								/>
+							</div>
 						</div>
 					</div>
+
+					<div ref="chatEnd" class="h-1" />
 				</template>
 			</div>
 
 			<!-- Composer -->
-			<div class="border-t border-outline-gray-2 p-4">
-				<div class="flex gap-2">
-					<Input
+			<div
+				class="flex-shrink-0 border-t border-outline-gray-2 bg-surface-white p-3"
+			>
+				<div class="flex items-end gap-2">
+					<Textarea
 						v-model="composer"
+						class="flex-1"
+						:rows="1"
 						:placeholder="
 							investigationName
-								? 'Ask a follow-up...'
-								: 'Ask about a site, server, bench, incident...'
+								? 'Ask a follow-up... (Enter to send, Shift+Enter for newline)'
+								: 'Describe what you want to investigate...'
 						"
-						:disabled="isRunning"
-						class="flex-1"
-						@keydown="handleKey"
+						:disabled="isRunning || startInv.loading"
+						@keydown="handleComposerKey"
 					/>
 					<Button
 						variant="solid"
 						theme="blue"
-						:disabled="isRunning || !composer.trim()"
+						:disabled="isRunning || !composer.trim() || startInv.loading"
+						:loading="continueInv.loading || startInv.loading"
 						@click="send"
-						>Send</Button
 					>
+						Send
+					</Button>
 				</div>
-				<p v-if="isRunning" class="mt-1.5 text-xs text-ink-gray-4">
-					Disabled while investigation is running...
-				</p>
+				<ErrorMessage
+					v-if="startInv.error || continueInv.error"
+					class="mt-2"
+					:message="startInv.error || continueInv.error"
+				/>
 			</div>
 		</div>
 	</div>
 
 	<!-- Approve action modal -->
-	<Dialog v-model="showApproveModal" :options="{ title: 'Confirm Action' }">
+	<Dialog
+		v-model="showApproveModal"
+		:options="{
+			title: 'Confirm Action',
+			size: 'sm',
+			actions: [
+				{
+					label: 'Cancel',
+					variant: 'ghost',
+					onClick: () => { showApproveModal = false; pendingAction = null },
+				},
+				{
+					label: 'Approve & Execute',
+					variant: 'solid',
+					theme: 'red',
+					loading: executeAction.loading,
+					onClick: confirmApprove,
+				},
+			],
+		}"
+	>
 		<template #body-content>
 			<div v-if="pendingAction" class="space-y-3 text-sm">
-				<div class="font-medium text-ink-gray-9">
-					{{ pendingAction.data.action }} {{ pendingAction.data.target_name }}
+				<div>
+					<p class="font-medium text-ink-gray-9">
+						{{ pendingAction.data?.action }}
+						on {{ pendingAction.data?.target_name }}
+					</p>
+					<p class="mt-1 text-ink-gray-6">{{ pendingAction.data?.reason }}</p>
 				</div>
-				<div class="grid grid-cols-[100px_1fr] gap-1 text-ink-gray-6">
-					<span>Reason</span><span>{{ pendingAction.data.reason }}</span>
-					<span>Impact</span
-					><span>{{ pendingAction.data.expected_impact }}</span>
-					<span>Expires</span><span>{{ pendingAction.data.expires_at }}</span>
+				<div class="rounded-md bg-surface-gray-1 p-3 text-xs text-ink-gray-6">
+					<p>
+						<span class="font-medium">Expected impact:</span>
+						{{ pendingAction.data?.expected_impact }}
+					</p>
+					<p class="mt-1">
+						<span class="font-medium">Expires:</span>
+						{{ pendingAction.data?.expires_at }}
+					</p>
 				</div>
 				<ErrorMessage
 					v-if="executeAction.error"
 					:message="executeAction.error"
 				/>
+				<div
+					v-if="!actionTokens[pendingAction?.name]"
+					class="rounded-md bg-surface-yellow-1 p-3 text-xs text-yellow-800"
+				>
+					Approval token not available. Only actions initiated in this session
+					can be approved.
+				</div>
 			</div>
-		</template>
-		<template #actions>
-			<Button variant="ghost" @click="showApproveModal = false">Cancel</Button>
-			<Button
-				variant="solid"
-				theme="red"
-				:loading="executeAction.loading"
-				@click="confirmApprove"
-			>
-				Approve & Run
-			</Button>
 		</template>
 	</Dialog>
 </template>
