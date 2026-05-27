@@ -8,6 +8,10 @@ from press.telemetry.monitor import get_user_details
 
 
 def set_context(key: str, value: dict):
+	# Don't try to set context on OPTIONS request
+	if frappe.request and frappe.request.method == "OPTIONS":
+		return
+
 	if not frappe.get_system_settings("enable_telemetry"):
 		return
 	with contextlib.suppress(Exception):
@@ -25,4 +29,7 @@ def set_context(key: str, value: dict):
 
 
 def add_user_context():
+	if frappe.request and frappe.request.method == "OPTIONS":
+		return
+
 	set_context("user_details", get_user_details())

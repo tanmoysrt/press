@@ -36,7 +36,7 @@
 		"Ajkr",
 		"Akbary",
 		"Akts",
-		"Åland",
+		"\u00c5land",
 		"Anadyr",
 		"Andhra",
 		"ansari",
@@ -63,7 +63,7 @@
 		"Baja",
 		"Balamurali",
 		"Barthelemy",
-		"Barthélemy",
+		"Barth\u00e9lemy",
 		"Bator",
 		"behavior",
 		"behaviour",
@@ -539,7 +539,7 @@
 		"reqd",
 		"Rerunnability",
 		"rerunnable",
-		"Réunion",
+		"R\u00e9union",
 		"Rhiv",
 		"Rhxk",
 		"Rica",
@@ -794,6 +794,14 @@
 		"libgnutls",
 		"UDF",
 		"Qwen",
-		"functools"
+		"functools",
+		"ASGI",
+		"WSGI",
+		"normalise",
+		"normalised",
+		"MCP",
+		"mcp",
+		"llm",
+		"LLM"
 	]
 }

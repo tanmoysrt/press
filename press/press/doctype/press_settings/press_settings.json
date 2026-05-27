@@ -1592,11 +1592,109 @@
 			"fieldname": "auto_upgrade_dependencies",
 			"fieldtype": "Check",
 			"label": "Auto Upgrade Dependencies"
+		},
+		{
+			"fieldname": "ai_ops_section",
+			"fieldtype": "Section Break",
+			"label": "AI Ops"
+		},
+		{
+			"default": "0",
+			"fieldname": "ai_ops_enabled",
+			"fieldtype": "Check",
+			"label": "AI Ops Enabled"
+		},
+		{
+			"fieldname": "ai_ops_default_provider",
+			"fieldtype": "Select",
+			"label": "Default Provider",
+			"options": "\nOpenAI\nAnthropic\nAnthropic Compatible"
+		},
+		{
+			"fieldname": "ai_ops_default_model",
+			"fieldtype": "Data",
+			"label": "Default Model"
+		},
+		{
+			"fieldname": "ai_ops_col_break",
+			"fieldtype": "Column Break"
+		},
+		{
+			"default": "60",
+			"fieldname": "ai_ops_request_timeout_seconds",
+			"fieldtype": "Int",
+			"label": "Request Timeout (seconds)"
+		},
+		{
+			"default": "4096",
+			"fieldname": "ai_ops_max_output_tokens",
+			"fieldtype": "Int",
+			"label": "Max Output Tokens"
+		},
+		{
+			"fieldname": "ai_ops_openai_section",
+			"fieldtype": "Section Break",
+			"label": "AI Ops — OpenAI"
+		},
+		{
+			"fieldname": "ai_ops_openai_api_key",
+			"fieldtype": "Password",
+			"label": "OpenAI API Key"
+		},
+		{
+			"fieldname": "ai_ops_openai_base_url",
+			"fieldtype": "Data",
+			"label": "OpenAI Base URL"
+		},
+		{
+			"fieldname": "ai_ops_openai_default_model",
+			"fieldtype": "Data",
+			"label": "OpenAI Default Model"
+		},
+		{
+			"fieldname": "ai_ops_anthropic_section",
+			"fieldtype": "Section Break",
+			"label": "AI Ops — Anthropic"
+		},
+		{
+			"fieldname": "ai_ops_anthropic_api_key",
+			"fieldtype": "Password",
+			"label": "Anthropic API Key"
+		},
+		{
+			"fieldname": "ai_ops_anthropic_base_url",
+			"fieldtype": "Data",
+			"label": "Anthropic Base URL"
+		},
+		{
+			"fieldname": "ai_ops_anthropic_default_model",
+			"fieldtype": "Data",
+			"label": "Anthropic Default Model"
+		},
+		{
+			"fieldname": "ai_ops_anthropic_default_opus_model",
+			"fieldtype": "Data",
+			"label": "Anthropic Default Opus Model"
+		},
+		{
+			"fieldname": "ai_ops_anthropic_default_sonnet_model",
+			"fieldtype": "Data",
+			"label": "Anthropic Default Sonnet Model"
+		},
+		{
+			"fieldname": "ai_ops_anthropic_default_haiku_model",
+			"fieldtype": "Data",
+			"label": "Anthropic Default Haiku Model"
+		},
+		{
+			"fieldname": "ai_ops_anthropic_custom_headers_json",
+			"fieldtype": "JSON",
+			"label": "Anthropic Custom Headers (JSON)"
 		}
 	],
 	"issingle": 1,
 	"links": [],
-	"modified": "2026-04-30 18:44:43.851468",
+	"modified": "2026-05-27 20:30:00.000000",
 	"modified_by": "Administrator",
 	"module": "Press",
 	"name": "Press Settings",

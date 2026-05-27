@@ -55,6 +55,7 @@ After reading `overview.md`, check the relevant research file for the area you a
 - Never run tests on the current development site. Use `test.local` — if it doesn't exist, ask the user for the test site name before running anything.
 - Code should be readable without a wiki.
 - **Type annotations**: All new whitelisted methods must have full type annotations on parameters. Add type hints to other new methods also wherever it doesn't complicate readability — skip if the annotation would be unwieldy (e.g., deeply nested generics).
+- If you are updating any <doctype>.json, make sure to update the modified field.
 
 ## Frontend Rules
 
